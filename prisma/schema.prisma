@@ -1,0 +1,244 @@
+// PactPay — Prisma schema (Neon Postgres)
+// Metric-milestone brand↔creator escrow on Algorand. Chain is authoritative;
+// these tables are the off-chain mirror + the bits that never go on-chain
+// (OAuth tokens, AI verdicts, tracking log). See ARCHITECTURE.md §7.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled (pgBouncer) — app runtime
+  directUrl = env("DIRECT_URL") // direct — migrations / db push
+}
+
+// ─── Identity ────────────────────────────────────────────────────────────────
+
+model User {
+  id             String          @id @default(cuid())
+  wallet         String          @unique // Algorand address (ed25519 pubkey, base32)
+  role           Role            @default(CREATOR)
+  loginMethod    LoginMethod     @default(WEB3AUTH) // how they signed in
+  email          String? // from Web3Auth social login (if any)
+  displayName    String?
+  avatarUrl      String?
+  fundedTestnet  Boolean         @default(false) // received the ALGO+USDC airdrop
+  socials        SocialAccount[]
+  dealsAsBrand   Deal[]          @relation("brand")
+  dealsAsCreator Deal[]          @relation("creator")
+  applications   Application[]
+  createdAt      DateTime        @default(now())
+}
+
+// Creator's verified posting identity — SEPARATE from login (which is Web3Auth/wallet).
+// Proves the @handle that must match the post we track. OAuth tokens AES-encrypted.
+model SocialAccount {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform        Platform
+  handle          String
+  platformUserId  String?
+  accessTokenEnc  String? // AES-256-GCM ciphertext
+  refreshTokenEnc String?
+  verifiedAt      DateTime @default(now())
+
+  @@unique([platform, handle])
+  @@index([userId])
+}
+
+// ─── Deals & metric milestones ───────────────────────────────────────────────
+
+model Deal {
+  id               String        @id @default(cuid())
+  onchainId        BigInt        @unique // u64 box key in the escrow app
+  brandId          String
+  brand            User          @relation("brand", fields: [brandId], references: [id])
+  creatorId        String?
+  creator          User?         @relation("creator", fields: [creatorId], references: [id])
+  title            String
+  brief            String // human-readable brief / guidelines
+  platform         Platform // where the deliverable must be posted
+  postUrl          String? // the link the creator uploads (we track this)
+  payoutMode       PayoutMode    @default(MILESTONE) // FULL = single milestone
+  totalAmountMicro BigInt // sum of milestone amounts (micro-USDC)
+  deadline         DateTime
+  status           DealStatus    @default(DRAFT)
+  briefHash        String // sha256(requirements) anchored in the funding txn note
+  fundTxId         String?
+  milestones       Milestone[]
+  applications     Application[]
+  verdicts         Verdict[]
+  metricChecks     MetricCheck[]
+  disputes         Dispute[]
+  createdAt        DateTime      @default(now())
+
+  @@index([brandId])
+  @@index([creatorId])
+  @@index([status])
+}
+
+// One payout tranche, released when its metric threshold is verified by the agent
+// and the contract's guardrails pass. FULL payout = a single milestone (metric POSTED).
+model Milestone {
+  id           String          @id @default(cuid())
+  dealId       String
+  deal         Deal            @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  index        Int // order within the deal (0,1,2,…)
+  metric       MilestoneMetric // what we track (LIKES, VIEWS, …, POSTED)
+  threshold    BigInt // e.g. 5000 likes ; POSTED uses 1
+  amountMicro  BigInt // micro-USDC released for this tranche
+  status       MilestoneStatus @default(PENDING)
+  reachedValue BigInt? // observed metric value when reached
+  approvedAt   DateTime? // when APPROVED_PENDING began (timelock anchor)
+  releaseTxId  String?
+  verdicts     Verdict[]
+  disputes     Dispute[]
+
+  @@unique([dealId, index])
+  @@index([status])
+}
+
+model Application {
+  id        String            @id @default(cuid())
+  dealId    String
+  deal      Deal              @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  creatorId String
+  creator   User              @relation(fields: [creatorId], references: [id])
+  pitch     String?
+  status    ApplicationStatus @default(SUBMITTED)
+  createdAt DateTime          @default(now())
+
+  @@unique([dealId, creatorId])
+}
+
+// The AI agent's re-check of a milestone (after the API shows the threshold reached).
+model Verdict {
+  id             String     @id @default(cuid())
+  dealId         String
+  deal           Deal       @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  milestoneId    String?
+  milestone      Milestone? @relation(fields: [milestoneId], references: [id])
+  pass           Boolean
+  confidence     Float
+  reason         String
+  model          String // which LLM produced it
+  observedMetric Json // snapshot of the fetched post data/metrics
+  x402SettleTxId String? // the agent's pay-per-verification receipt
+  createdAt      DateTime   @default(now())
+
+  @@index([dealId])
+}
+
+// Tracking log: every time we read the post's metric (job poll or on-demand check).
+model MetricCheck {
+  id             String      @id @default(cuid())
+  dealId         String
+  deal           Deal        @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  milestoneIndex Int
+  source         CheckSource @default(API)
+  value          BigInt // observed metric value
+  x402SettleTxId String? // if this read was paid via the x402 proof oracle
+  checkedAt      DateTime    @default(now())
+
+  @@index([dealId, milestoneIndex])
+}
+
+model Dispute {
+  id          String        @id @default(cuid())
+  dealId      String
+  deal        Deal          @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  milestoneId String?
+  milestone   Milestone?    @relation(fields: [milestoneId], references: [id])
+  openedBy    String // wallet
+  reason      String
+  status      DisputeStatus @default(OPEN)
+  createdAt   DateTime      @default(now())
+
+  @@index([dealId])
+}
+
+// Indexer mirror of on-chain escrow events (chain is the source of truth).
+model EscrowEvent {
+  id          String   @id @default(cuid())
+  dealId      String
+  kind        String // FUNDED | VERDICT | RELEASED | REFUNDED | DISPUTED
+  amountMicro BigInt?
+  txId        String   @unique
+  round       BigInt
+  createdAt   DateTime @default(now())
+
+  @@index([dealId])
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  BRAND
+  CREATOR
+  BOTH
+}
+
+enum LoginMethod {
+  WEB3AUTH // social login → derived Algorand key
+  WALLET // external wallet (Pera/Defly via use-wallet)
+}
+
+enum Platform {
+  X
+  YOUTUBE
+  TIKTOK
+  INSTAGRAM
+}
+
+enum PayoutMode {
+  FULL
+  MILESTONE
+}
+
+enum DealStatus {
+  DRAFT
+  FUNDED
+  ACCEPTED
+  TRACKING // post uploaded, watching the metric
+  PARTIALLY_RELEASED
+  RELEASED
+  REFUNDED
+  DISPUTED
+}
+
+enum MilestoneMetric {
+  POSTED // FULL mode / "just deliver"
+  LIKES
+  VIEWS
+  COMMENTS
+  SHARES
+  FOLLOWERS
+}
+
+enum MilestoneStatus {
+  PENDING
+  REACHED_PENDING // threshold hit, AI approved, in challenge window
+  RELEASED
+  REFUNDED
+  DISPUTED
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum CheckSource {
+  API
+  MANUAL
+}
+
+enum DisputeStatus {
+  OPEN
+  RESOLVED_CREATOR
+  RESOLVED_BRAND
+}

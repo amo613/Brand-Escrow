@@ -1,0 +1,46 @@
+# ─── Secrets (NEVER commit) ───────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+**/wallet.json
+**/mnemonic.txt
+
+# ─── Node ─────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ─── Next.js / frontend ───────────────────────────────────────────────────
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# ─── Prisma ───────────────────────────────────────────────────────────────
+prisma/*.db
+prisma/*.db-journal
+
+# ─── AlgoKit / contracts ──────────────────────────────────────────────────
+contracts/.algokit/
+contracts/artifacts/*.tok
+.algokit/
+*.teal.tok
+
+# ─── Plan docs are local-only — the public repo is README only ───────────────
+*.md
+!README.md
+
+# ─── Misc ─────────────────────────────────────────────────────────────────
+.DS_Store
+.qodo/
+coverage/
+*.log
+.vscode/
+.idea/
+tmp/
