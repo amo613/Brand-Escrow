@@ -101,7 +101,7 @@ Milestone 2 repeats at 10k likes → 3 USDC → deal RELEASED. Two tranches, ful
 | New users | backend **dispenser** airdrops test ALGO + USDC + auto opt-in |
 | Social verify | **direct OAuth** (X PKCE / YouTube-Google / TikTok), AES tokens — **no Privy** |
 | Backend | **Fastify + TypeScript** |
-| AI | **Featherless AI** → OpenRouter fallback |
+| AI | **OpenRouter** → `google/gemini-3.1-flash-lite` (multimodal: verifies image/video deliverables) |
 | DB | **Neon Postgres + Prisma** ✅ live |
 | Frontend | **Next.js 14 + Tailwind** (or Vite SPA like the reference `ui/`) |
 
