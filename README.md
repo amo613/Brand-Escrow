@@ -131,10 +131,12 @@ Milestone 2 repeats at 10k likes → 3 USDC → deal RELEASED. Two tranches, ful
 algokit localnet start                       # local Algorand
 algokit init -t typescript                   # contracts/ (PuyaTs)
 # backend:
-npm i fastify @fastify/cookie @fastify/jwt @prisma/client \
-  @algorandfoundation/algokit-utils @x402/avm @x402/core @x402/fetch @x402/hono tweetnacl algosdk
+npm i fastify @fastify/cookie @fastify/jwt @prisma/client @x402/avm @x402/core @x402/fetch @x402/hono tweetnacl algosdk
+# ⚠️ algokit-utils: pin the v10-alpha that @x402/avm uses — stable 9.2.0 LACKS generateAddressWithSigners:
+npm i @algorandfoundation/algokit-utils@10.0.0-alpha.46
 # web (login + x402 client):
-npm i @web3auth/modal @web3auth/no-modal @txnlab/use-wallet-react @x402/fetch @x402/avm
+# ⚠️ Web3Auth MUST be v10 — the useWeb3Auth hook is v10 API; npm-latest is v11 and breaks the build:
+npm i @web3auth/modal@^10.16.0 @web3auth/no-modal@^10 @txnlab/use-wallet-react @x402/fetch @x402/avm
 # fund the dispenser once:  https://bank.testnet.algorand.network  +  https://faucet.circle.com
 ```
 
@@ -146,4 +148,4 @@ npm i @web3auth/modal @web3auth/no-modal @txnlab/use-wallet-react @x402/fetch @x
 - Faucets: ALGO <https://bank.testnet.algorand.network> · USDC <https://faucet.circle.com>
 - Bonus: Quantoz EURQ <https://docs.ai.quantozpay.com/hackathon/guide/> · Folks xALGO · Alpha Arcade
 
-> ⚠️ Confirm before building: `npm view @x402/avm` (scope `@x402/*` resolved at `^2.12`) and `GET facilitator.goplausible.xyz/supported` (USDC ASA `10458941`).
+> ⚠️ **Version pins (verified, or it breaks `npm i`):** `@web3auth/modal@^10.16.0` + `@web3auth/no-modal@^10` (latest is v11 → incompatible with the v10 `useWeb3Auth` hook); `@algorandfoundation/algokit-utils@10.0.0-alpha.46` (stable 9.2.0 lacks `generateAddressWithSigners`; this alpha is exactly what `@x402/avm@2.14` pulls). `@x402/*` `^2.12` resolves to `2.14` ✓. Also `GET facilitator.goplausible.xyz/supported` to confirm USDC ASA `10458941`.

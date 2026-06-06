@@ -91,7 +91,7 @@ model Milestone {
   amountMicro  BigInt // micro-USDC released for this tranche
   status       MilestoneStatus @default(PENDING)
   reachedValue BigInt? // observed metric value when reached
-  approvedAt   DateTime? // when APPROVED_PENDING began (timelock anchor)
+  approvedAt   DateTime? // when REACHED_PENDING began (timelock anchor)
   releaseTxId  String?
   verdicts     Verdict[]
   disputes     Dispute[]
