@@ -27,7 +27,7 @@ interface PlatformCfg {
   authUrl: string; tokenUrl: string; scope: string
   clientId?: string; clientSecret?: string; redirect?: string
   pkce?: boolean; basicAuth?: boolean; clientKeyParam?: boolean; extraAuth?: Record<string, string>
-  userinfo: (token: string) => Promise<{ handle?: string; id?: string; followers?: number; avatar?: string }>
+  userinfo: (token: string) => Promise<{ handle?: string; id?: string; followers?: number; avatar?: string; engagement?: number }>
 }
 
 const CFG: Record<string, PlatformCfg> = {
@@ -35,7 +35,23 @@ const CFG: Record<string, PlatformCfg> = {
     authUrl: 'https://twitter.com/i/oauth2/authorize', tokenUrl: 'https://api.twitter.com/2/oauth2/token',
     scope: 'tweet.read users.read', clientId: process.env.X_CLIENT_ID, clientSecret: process.env.X_CLIENT_SECRET, redirect: process.env.X_REDIRECT_URI,
     pkce: true, basicAuth: true,
-    userinfo: async (t) => { const j: any = await (await fetch('https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url', { headers: { Authorization: `Bearer ${t}` } })).json(); return { handle: j.data?.username ? '@' + j.data.username : undefined, id: j.data?.id, followers: j.data?.public_metrics?.followers_count, avatar: j.data?.profile_image_url?.replace('_normal', '') } },
+    userinfo: async (t) => {
+      const j: any = await (await fetch('https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url', { headers: { Authorization: `Bearer ${t}` } })).json()
+      const u = j.data
+      if (!u?.username) throw new Error(`X user lookup failed: ${JSON.stringify(j).slice(0, 200)}`)
+      const followers = u.public_metrics?.followers_count ?? 0
+      // real engagement rate: Ø(likes+replies+retweets+quotes) over recent tweets / followers × 100
+      let engagement: number | undefined
+      try {
+        const tw: any = await (await fetch(`https://api.twitter.com/2/users/${u.id}/tweets?max_results=20&tweet.fields=public_metrics`, { headers: { Authorization: `Bearer ${t}` } })).json()
+        const arr = tw.data ?? []
+        if (arr.length && followers > 0) {
+          const avg = arr.reduce((a: number, x: any) => a + ((x.public_metrics?.like_count ?? 0) + (x.public_metrics?.reply_count ?? 0) + (x.public_metrics?.retweet_count ?? 0) + (x.public_metrics?.quote_count ?? 0)), 0) / arr.length
+          engagement = +Math.min(100, (avg / followers) * 100).toFixed(1)
+        }
+      } catch { /* engagement is optional */ }
+      return { handle: '@' + u.username, id: u.id, followers, avatar: u.profile_image_url?.replace('_normal', ''), engagement }
+    },
   },
   youtube: {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth', tokenUrl: 'https://oauth2.googleapis.com/token',
@@ -54,8 +70,18 @@ const CFG: Record<string, PlatformCfg> = {
     authUrl: 'https://www.tiktok.com/v2/auth/authorize/', tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
     scope: 'user.info.basic', clientId: process.env.TIKTOK_CLIENT_KEY, clientSecret: process.env.TIKTOK_CLIENT_SECRET, redirect: process.env.TIKTOK_REDIRECT_URI,
     clientKeyParam: true,
-    // user.info.basic returns display_name/avatar/open_id (follower_count needs user.info.profile → may be null)
-    userinfo: async (t) => { const j: any = await (await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url,follower_count', { headers: { Authorization: `Bearer ${t}` } })).json(); const u = j.data?.user; return { handle: u?.display_name, id: u?.open_id, followers: u?.follower_count, avatar: u?.avatar_url } },
+    // user.info.basic returns display_name/avatar/open_id (follower_count needs user.info.profile → request it
+    // separately so a missing scope doesn't break the whole call). Surface TikTok's real error.
+    userinfo: async (t) => {
+      const j: any = await (await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url', { headers: { Authorization: `Bearer ${t}` } })).json()
+      if (j.error && j.error.code && j.error.code !== 'ok') throw new Error(`TikTok: ${j.error.code} — ${j.error.message || ''}`.trim())
+      const u = j.data?.user
+      if (!u?.display_name) throw new Error(`TikTok returned no profile: ${JSON.stringify(j).slice(0, 200)}`)
+      // best-effort follower_count (needs user.info.profile scope); ignore if not granted
+      let followers: number | undefined
+      try { const p: any = await (await fetch('https://open.tiktokapis.com/v2/user/info/?fields=follower_count', { headers: { Authorization: `Bearer ${t}` } })).json(); followers = p.data?.user?.follower_count } catch { /* optional */ }
+      return { handle: u.display_name, id: u.open_id, avatar: u.avatar_url, followers }
+    },
   },
 }
 
@@ -104,11 +130,11 @@ export function socialRoutes(app: Hono, requireAuth: any) {
       if (conf.basicAuth) headers.Authorization = 'Basic ' + Buffer.from(`${conf.clientId}:${conf.clientSecret}`).toString('base64')
       const tj: any = await (await fetch(conf.tokenUrl, { method: 'POST', headers, body })).json()
       const accessToken = tj.access_token
-      if (!accessToken) throw new Error(tj.error_description || tj.error || 'token exchange failed')
+      if (!accessToken) throw new Error(`token exchange failed: ${tj.error_description || tj.error || JSON.stringify(tj).slice(0, 200)}`)
       const info = await conf.userinfo(accessToken)
       const { handle, id } = info
       if (!handle) throw new Error('could not read your handle from the provider')
-      await repo.saveSocialAccount(st.wallet, platform, handle, { platformUserId: id, accessTokenEnc: enc(accessToken), refreshTokenEnc: enc(tj.refresh_token), followers: info.followers, avatarUrl: info.avatar })
+      await repo.saveSocialAccount(st.wallet, platform, handle, { platformUserId: id, accessTokenEnc: enc(accessToken), refreshTokenEnc: enc(tj.refresh_token), followers: info.followers, avatarUrl: info.avatar, engagement: info.engagement })
       return resultPage(c, { ok: true, platform, handle })
     } catch (e: any) {
       return resultPage(c, { ok: false, platform, error: e?.message ?? String(e) })

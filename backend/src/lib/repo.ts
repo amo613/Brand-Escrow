@@ -13,20 +13,21 @@ const UNAVATAR: Record<string, string> = { X: 'twitter', YOUTUBE: 'youtube', TIK
 // REAL audience stats: cached in Redis at OAuth-verify time (followers + avatar from the platform API).
 // The avatar always resolves to the real profile picture via unavatar; followers is real or undefined
 // (never a fabricated number). key = pactpay:social:<PLATFORM>:<handle-lower>
+type SocialCache = { followers?: number; avatarUrl?: string; engagement?: number }
 const socialKey = (platform: string, handle: string) => `pactpay:social:${platform}:${handle.replace(/^@/, '').toLowerCase()}`
-export async function setSocialCache(platform: Platform, handle: string, data: { followers?: number; avatarUrl?: string }) {
+export async function setSocialCache(platform: Platform, handle: string, data: SocialCache) {
   if (!redis || !handle) return
   try { await redis.set(socialKey(platform, handle), JSON.stringify(data)) } catch { /* ignore */ }
 }
-async function getSocialCache(platform: Platform, handle: string): Promise<{ followers?: number; avatarUrl?: string } | null> {
+async function getSocialCache(platform: Platform, handle: string): Promise<SocialCache | null> {
   if (!redis || !handle) return null
   try { const r = await redis.get(socialKey(platform, handle)); return r ? JSON.parse(r) : null } catch { return null }
 }
-async function socialStats(platform: Platform, handle?: string): Promise<{ avatarUrl?: string; followers?: number }> {
+async function socialStats(platform: Platform, handle?: string): Promise<{ avatarUrl?: string; followers?: number; engagement?: number }> {
   if (!handle) return {}
   const h = handle.replace(/^@/, '')
   const cached = await getSocialCache(platform, handle)
-  return { avatarUrl: cached?.avatarUrl || `https://unavatar.io/${UNAVATAR[platform] ?? 'twitter'}/${h}`, followers: cached?.followers }
+  return { avatarUrl: cached?.avatarUrl || `https://unavatar.io/${UNAVATAR[platform] ?? 'twitter'}/${h}`, followers: cached?.followers, engagement: cached?.engagement }
 }
 const METRICS = ['posted', 'likes', 'views', 'comments', 'shares', 'followers']
 const metricToDb = (m: string | number): MilestoneMetric => (typeof m === 'number' ? METRICS[m] : m).toUpperCase() as MilestoneMetric
@@ -180,11 +181,11 @@ export async function recordRelease(onchainId: string, index: number, releaseTx:
 }
 
 // ── Social accounts (OAuth-verified @handle) ─────────────────────────────────
-export async function saveSocialAccount(wallet: string, platform: string, handle: string, opts: { platformUserId?: string; accessTokenEnc?: string; refreshTokenEnc?: string; followers?: number; avatarUrl?: string }) {
+export async function saveSocialAccount(wallet: string, platform: string, handle: string, opts: { platformUserId?: string; accessTokenEnc?: string; refreshTokenEnc?: string; followers?: number; avatarUrl?: string; engagement?: number }) {
   const user = await upsertUser(wallet)
   const plat = platformToDb(platform)
-  // cache the REAL follower count + avatar (from the platform API) for the marketplace cards
-  await setSocialCache(plat, handle, { followers: opts.followers, avatarUrl: opts.avatarUrl })
+  // cache the REAL follower count + avatar + engagement (from the platform API) for the marketplace cards
+  await setSocialCache(plat, handle, { followers: opts.followers, avatarUrl: opts.avatarUrl, engagement: opts.engagement })
   return prisma.socialAccount.upsert({
     where: { platform_handle: { platform: plat, handle } },
     update: { userId: user.id, platformUserId: opts.platformUserId, accessTokenEnc: opts.accessTokenEnc, refreshTokenEnc: opts.refreshTokenEnc, verifiedAt: new Date() },
