@@ -8,8 +8,9 @@
 <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet" />
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 </head>
-<body>
-<div id="root"></div>
+<body class="bg-grid dots">
+<canvas id="confetti-canvas" style="position:fixed; inset:0; pointer-events:none; z-index:9999;"></canvas>
+<div id="root" style="position:relative; z-index:1;"></div>
 <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

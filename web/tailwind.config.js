@@ -13,6 +13,10 @@ export default {
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       borderRadius: { card: '15px', ctl: '10px' },
+      boxShadow: {
+        card: '0 1px 0 0 rgba(255,255,255,0.03) inset, 0 18px 50px -22px rgba(0,0,0,0.8)',
+        glow: '0 0 0 1px rgba(0,229,168,0.0), 0 0 40px -8px rgba(0,229,168,0.35)',
+      },
     },
   },
   plugins: [],

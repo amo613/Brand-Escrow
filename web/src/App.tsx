@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from './lib/api.ts'
 import { connectSocial, devLogin, signChallenge, optInUSDC, getBalances, logoutSocial, type Wallet } from './lib/web3auth.ts'
-import { Logo, Pill, Spinner } from './components/ui.tsx'
+import { Logo, Pill, Spinner, Modal, Icon, C } from './components/ui.tsx'
+import { Landing } from './screens/Landing.tsx'
 import { Dashboard } from './screens/Dashboard.tsx'
 import { Studio } from './screens/Studio.tsx'
 import { DealDetail } from './screens/DealDetail.tsx'
@@ -80,46 +81,37 @@ export default function App() {
     )
   }
 
+  const busyLogin = phase === 'connecting' || phase === 'airdrop'
   return (
-    <div className="min-h-screen grid place-items-center px-5">
-      <div className="w-full max-w-[460px] anim-rise">
-        <div className="flex justify-center mb-6"><Logo size={40} /></div>
-        {phase === 'login' && (
-          <div className="glass hair rounded-card p-7 shadow-2xl">
-            <h1 className="font-display text-[26px] font-semibold text-center tracking-tight">Pay creators when the post performs.</h1>
-            <p className="text-txt2 text-[14px] text-center mt-2 mb-6">On-chain escrow on Algorand, released by an AI agent over x402. No seed phrase — we create your wallet.</p>
-            <div className="flex flex-col gap-2.5">
-              <button onClick={() => social('brand')} className="px-4 py-3 rounded-ctl font-semibold text-ink" style={{ background: 'linear-gradient(120deg,#00E5A8,#34D2FF)' }}>Log in as Brand</button>
-              <button onClick={() => social('creator')} className="px-4 py-3 rounded-ctl font-medium text-txt hair bg-white/[0.03] hover:bg-white/[0.06]">Log in as Creator</button>
+    <>
+      <Landing onAuth={social} />
+
+      {/* wallet creation + airdrop animation (overlay) */}
+      <Modal open={busyLogin} width={440} label="Signing in">
+        <div className="p-7 text-center">
+          <div className="mx-auto mb-5 grid place-items-center w-20 h-20"><Spinner size={72} /></div>
+          <h3 className="font-display text-[20px] font-semibold tracking-tight">{phase === 'connecting' ? 'Creating your wallet…' : 'Funding your wallet'}</h3>
+          {wallet && <p className="num text-[12px] text-txt2 mt-1">{trunc(wallet.address)} · Algorand TestNet</p>}
+          {phase === 'airdrop' && (
+            <div className="mt-6 flex flex-col gap-2.5 text-left">
+              {([['algo', '+1.00 test ALGO', 'Network gas', C.chain], ['optin', 'USDC opt-in', 'ASA ' + (health?.usdcAsa ?? ''), C.agent], ['usdc', '+50.00 test USDC', 'Stablecoin balance', C.mint]] as [string, string, string, string][]).map(([k, a, b, c]) => {
+                const done = (drops as any)[k]
+                return (
+                  <div key={k} className="flex items-center gap-3 px-3.5 py-2.5 rounded-ctl hair transition-all duration-500" style={{ background: done ? c + '12' : 'transparent', opacity: done ? 1 : 0.45 }}>
+                    <div className="grid place-items-center w-8 h-8 rounded-md" style={{ background: c + '1c' }}>{done ? <Icon name="check" size={16} c={c} sw={2.6} /> : <span className="inline-block w-3 h-3 rounded-full border-2 border-muted/40 border-t-transparent spin" />}</div>
+                    <div className="flex-1"><div className="num text-[13.5px]" style={{ color: done ? C.txt : C.txt2 }}>{a}</div><div className="text-[11.5px] text-muted">{b}</div></div>
+                    {done && <span className="num text-[11px]" style={{ color: c }}>✓</span>}
+                  </div>
+                )
+              })}
             </div>
-            <div className="flex items-center gap-2 justify-center mt-5 text-[12px] text-muted">🔒 Non-custodial · powered by Web3Auth</div>
-            <DevLogin onLogin={doLogin} />
-            {err && <div className="text-[12.5px] text-coral mt-4 text-center">{err}</div>}
-            {health && <div className="num text-[11px] text-muted mt-4 text-center">backend ✓ · escrowApp {health.escrowApp}</div>}
-          </div>
-        )}
-        {(phase === 'connecting' || phase === 'airdrop') && (
-          <div className="glass hair rounded-card p-7 text-center">
-            <div className="mx-auto mb-5 grid place-items-center"><Spinner /></div>
-            <h3 className="font-display text-[20px] font-semibold">{phase === 'connecting' ? 'Creating your wallet…' : 'Funding your wallet'}</h3>
-            {wallet && <p className="num text-[12px] text-txt2 mt-1">{trunc(wallet.address)} · Algorand TestNet</p>}
-            {phase === 'airdrop' && (
-              <div className="mt-6 flex flex-col gap-2.5 text-left">
-                {[['algo', '+5.00 test ALGO', 'Network gas', '#34D2FF'], ['optin', 'USDC opt-in', 'ASA ' + (health?.usdcAsa ?? ''), '#7C5CFF'], ['usdc', '+50.00 test USDC', 'Stablecoin balance', '#00E5A8']].map(([k, a, b, c]) => {
-                  const done = (drops as any)[k as string]
-                  return (
-                    <div key={k as string} className="flex items-center gap-3 px-3.5 py-2.5 rounded-ctl hair" style={{ background: done ? (c as string) + '12' : 'transparent', opacity: done ? 1 : 0.45 }}>
-                      <div className="grid place-items-center w-8 h-8 rounded-md" style={{ background: (c as string) + '1c' }}>{done ? <span style={{ color: c as string }}>✓</span> : <span className="inline-block w-3 h-3 rounded-full border-2 border-muted/40 border-t-transparent spin" />}</div>
-                      <div className="flex-1"><div className="num text-[13.5px]" style={{ color: done ? '#EDF0F4' : '#9AA4B2' }}>{a}</div><div className="text-[11.5px] text-muted">{b}</div></div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+          )}
+        </div>
+      </Modal>
+
+      {err && !busyLogin && <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[120] text-[12.5px] text-coral glass hair rounded-ctl px-4 py-2.5 anim-rise">{err}</div>}
+      <DevLogin onLogin={doLogin} />
+    </>
   )
 }
 
@@ -128,10 +120,10 @@ function DevLogin({ onLogin }: { onLogin: (w: Wallet, r: 'brand' | 'creator') =>
   const [mn, setMn] = useState('')
   const [r, setR] = useState<'brand' | 'creator'>('brand')
   return (
-    <div className="mt-5 pt-4 border-t border-line">
-      <button onClick={() => setOpen(!open)} className="text-[12px] text-txt2 hover:text-txt">{open ? '▾' : '▸'} Dev login (paste a test mnemonic)</button>
+    <div className="fixed bottom-4 right-4 z-[120] w-[290px] text-right">
+      <button onClick={() => setOpen(!open)} className="num text-[11px] text-muted hover:text-txt2 ml-auto">{open ? '▾' : '▸'} dev login</button>
       {open && (
-        <div className="mt-2.5 flex flex-col gap-2">
+        <div className="mt-2 glass hair rounded-ctl p-3 flex flex-col gap-2 anim-rise text-left shadow-card">
           <textarea value={mn} onChange={(e) => setMn(e.target.value)} rows={2} placeholder="25-word test mnemonic…" className="w-full px-3 py-2 rounded-ctl hair bg-ink/60 text-[12px] num text-txt resize-none" />
           <div className="flex gap-2">
             <select value={r} onChange={(e) => setR(e.target.value as any)} className="px-2 py-1.5 rounded-ctl hair bg-ink/60 text-[12.5px] text-txt"><option value="brand">brand</option><option value="creator">creator</option></select>
