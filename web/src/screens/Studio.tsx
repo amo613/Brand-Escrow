@@ -107,13 +107,15 @@ export function Studio({ wallet, nav, onDone }: { wallet: Wallet; nav: (n: Scree
             ) : (
               <div>
                 <div className="flex flex-col gap-2.5">{form.milestones.map((m, i) => {
-                  const bad = !(+m.amount > 0 && (m.metric === 'posted' || i === 0 || +m.threshold > +form.milestones[i - 1].threshold))
+                  // highlight the field that's actually wrong: threshold red ONLY if it doesn't ascend; amount red if ≤ 0
+                  const badThreshold = m.metric !== 'posted' && i > 0 && +m.threshold <= +form.milestones[i - 1].threshold
+                  const badAmount = !(+m.amount > 0)
                   return (
                     <div key={i} className="grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-2 items-center">
                       <span className="num text-[12px] text-muted w-5 text-center">{i + 1}</span>
                       <select value={m.metric} onChange={(e) => setMs(i, { metric: e.target.value })} className="w-full appearance-none px-2.5 py-2 rounded-ctl hair bg-ink/60 text-[12.5px] text-txt">{Object.keys(METRIC_NUM).map((o) => <option key={o} value={o}>{o === 'posted' ? 'Delivery' : METRIC_LABEL[o]}</option>)}</select>
-                      <input type="number" disabled={m.metric === 'posted'} value={m.metric === 'posted' ? '' : m.threshold} onChange={(e) => setMs(i, { threshold: +e.target.value })} placeholder={m.metric === 'posted' ? '—' : 'threshold'} className="px-2.5 py-2 rounded-ctl hair bg-ink/60 text-[12.5px] text-txt num disabled:opacity-40 placeholder:text-muted" style={bad && m.metric !== 'posted' ? { borderColor: C.coral + '99' } : {}} />
-                      <div className="flex items-center gap-1 px-2.5 rounded-ctl hair bg-ink/60"><span className="num text-muted text-[12px]">$</span><input type="number" step="0.5" value={m.amount} onChange={(e) => setMs(i, { amount: +e.target.value })} className="bg-transparent w-full py-2 num text-[12.5px] text-txt" /></div>
+                      <input type="number" disabled={m.metric === 'posted'} value={m.metric === 'posted' ? '' : m.threshold} onChange={(e) => setMs(i, { threshold: +e.target.value })} placeholder={m.metric === 'posted' ? '—' : 'threshold'} className="px-2.5 py-2 rounded-ctl hair bg-ink/60 text-[12.5px] text-txt num disabled:opacity-40 placeholder:text-muted" style={badThreshold ? { borderColor: C.coral + '99' } : {}} />
+                      <div className="flex items-center gap-1 px-2.5 rounded-ctl hair bg-ink/60" style={badAmount ? { borderColor: C.coral + '99' } : {}}><span className="num text-muted text-[12px]">$</span><input type="number" step="0.5" value={m.amount} onChange={(e) => setMs(i, { amount: +e.target.value })} className="bg-transparent w-full py-2 num text-[12.5px] text-txt" /></div>
                       <button onClick={() => delMs(i)} disabled={form.milestones.length <= 1} className="text-muted hover:text-coral p-1 disabled:opacity-30"><Icon name="x" size={15} /></button>
                     </div>
                   )
