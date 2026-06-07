@@ -10,12 +10,23 @@ import type { Platform, MilestoneMetric } from '@prisma/client'
 const PLAT_TO_DB: Record<string, Platform> = { x: 'X', twitter: 'X', youtube: 'YOUTUBE', tiktok: 'TIKTOK', instagram: 'INSTAGRAM' }
 const PLAT_FROM_DB: Record<string, string> = { X: 'x', YOUTUBE: 'youtube', TIKTOK: 'tiktok', INSTAGRAM: 'instagram' }
 const UNAVATAR: Record<string, string> = { X: 'twitter', YOUTUBE: 'youtube', TIKTOK: 'tiktok', INSTAGRAM: 'instagram' }
-// real profile avatar (via unavatar) + realistic, deterministic audience stats for the marketplace cards
-function socialStats(platform: Platform, handle?: string) {
+// REAL audience stats: cached in Redis at OAuth-verify time (followers + avatar from the platform API).
+// The avatar always resolves to the real profile picture via unavatar; followers is real or undefined
+// (never a fabricated number). key = pactpay:social:<PLATFORM>:<handle-lower>
+const socialKey = (platform: string, handle: string) => `pactpay:social:${platform}:${handle.replace(/^@/, '').toLowerCase()}`
+export async function setSocialCache(platform: Platform, handle: string, data: { followers?: number; avatarUrl?: string }) {
+  if (!redis || !handle) return
+  try { await redis.set(socialKey(platform, handle), JSON.stringify(data)) } catch { /* ignore */ }
+}
+async function getSocialCache(platform: Platform, handle: string): Promise<{ followers?: number; avatarUrl?: string } | null> {
+  if (!redis || !handle) return null
+  try { const r = await redis.get(socialKey(platform, handle)); return r ? JSON.parse(r) : null } catch { return null }
+}
+async function socialStats(platform: Platform, handle?: string): Promise<{ avatarUrl?: string; followers?: number }> {
   if (!handle) return {}
   const h = handle.replace(/^@/, '')
-  const seed = [...h].reduce((a, c) => a + c.charCodeAt(0), 0)
-  return { avatarUrl: `https://unavatar.io/${UNAVATAR[platform] ?? 'twitter'}/${h}`, followers: 40000 + (seed * 977) % 1400000, engagement: +(2.8 + (seed % 40) / 10).toFixed(1) }
+  const cached = await getSocialCache(platform, handle)
+  return { avatarUrl: cached?.avatarUrl || `https://unavatar.io/${UNAVATAR[platform] ?? 'twitter'}/${h}`, followers: cached?.followers }
 }
 const METRICS = ['posted', 'likes', 'views', 'comments', 'shares', 'followers']
 const metricToDb = (m: string | number): MilestoneMetric => (typeof m === 'number' ? METRICS[m] : m).toUpperCase() as MilestoneMetric
@@ -64,18 +75,19 @@ async function toView(d: any): Promise<any> {
   const meta = await getMeta(d.onchainId.toString())
   // verified handle per applicant: their SocialAccount for this deal's platform, else the pitch they typed.
   // Enrich with the real profile avatar (unavatar) + realistic audience stats for the marketplace cards.
-  const applicants = (d.applications ?? []).filter((a: any) => a.status === 'SUBMITTED').map((a: any) => {
+  const applicants = await Promise.all((d.applications ?? []).filter((a: any) => a.status === 'SUBMITTED').map(async (a: any) => {
     const social = (a.creator.socials ?? []).find((s: any) => s.platform === d.platform)
     const handle = social?.handle ?? a.pitch ?? undefined
-    return { address: a.creator.wallet, handle, verified: !!social, at: new Date(a.createdAt).getTime(), ...socialStats(d.platform, handle) }
-  })
+    return { address: a.creator.wallet, handle, verified: !!social, at: new Date(a.createdAt).getTime(), ...(await socialStats(d.platform, handle)) }
+  }))
   const creatorHandleVal = d.creator ? ((d.creator.socials ?? []).find((s: any) => s.platform === d.platform)?.handle ?? undefined) : undefined
+  const creatorStatsVal = await socialStats(d.platform, creatorHandleVal)
   return {
     id: d.onchainId.toString(),
     brand: d.brand?.wallet,
     creator: d.creator?.wallet ?? undefined,
     creatorHandle: creatorHandleVal,
-    creatorStats: socialStats(d.platform, creatorHandleVal),
+    creatorStats: creatorStatsVal,
     title: d.title, brief: d.brief, platform: PLAT_FROM_DB[d.platform] ?? 'x', postUrl: d.postUrl ?? undefined,
     status: d.status,
     milestones: (d.milestones ?? []).sort((a: any, b: any) => a.index - b.index).map((m: any) => ({
@@ -168,9 +180,11 @@ export async function recordRelease(onchainId: string, index: number, releaseTx:
 }
 
 // ── Social accounts (OAuth-verified @handle) ─────────────────────────────────
-export async function saveSocialAccount(wallet: string, platform: string, handle: string, opts: { platformUserId?: string; accessTokenEnc?: string; refreshTokenEnc?: string }) {
+export async function saveSocialAccount(wallet: string, platform: string, handle: string, opts: { platformUserId?: string; accessTokenEnc?: string; refreshTokenEnc?: string; followers?: number; avatarUrl?: string }) {
   const user = await upsertUser(wallet)
   const plat = platformToDb(platform)
+  // cache the REAL follower count + avatar (from the platform API) for the marketplace cards
+  await setSocialCache(plat, handle, { followers: opts.followers, avatarUrl: opts.avatarUrl })
   return prisma.socialAccount.upsert({
     where: { platform_handle: { platform: plat, handle } },
     update: { userId: user.id, platformUserId: opts.platformUserId, accessTokenEnc: opts.accessTokenEnc, refreshTokenEnc: opts.refreshTokenEnc, verifiedAt: new Date() },

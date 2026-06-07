@@ -27,7 +27,7 @@ interface PlatformCfg {
   authUrl: string; tokenUrl: string; scope: string
   clientId?: string; clientSecret?: string; redirect?: string
   pkce?: boolean; basicAuth?: boolean; clientKeyParam?: boolean; extraAuth?: Record<string, string>
-  userinfo: (token: string) => Promise<{ handle?: string; id?: string }>
+  userinfo: (token: string) => Promise<{ handle?: string; id?: string; followers?: number; avatar?: string }>
 }
 
 const CFG: Record<string, PlatformCfg> = {
@@ -35,27 +35,27 @@ const CFG: Record<string, PlatformCfg> = {
     authUrl: 'https://twitter.com/i/oauth2/authorize', tokenUrl: 'https://api.twitter.com/2/oauth2/token',
     scope: 'tweet.read users.read', clientId: process.env.X_CLIENT_ID, clientSecret: process.env.X_CLIENT_SECRET, redirect: process.env.X_REDIRECT_URI,
     pkce: true, basicAuth: true,
-    userinfo: async (t) => { const j: any = await (await fetch('https://api.twitter.com/2/users/me', { headers: { Authorization: `Bearer ${t}` } })).json(); return { handle: j.data?.username ? '@' + j.data.username : undefined, id: j.data?.id } },
+    userinfo: async (t) => { const j: any = await (await fetch('https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url', { headers: { Authorization: `Bearer ${t}` } })).json(); return { handle: j.data?.username ? '@' + j.data.username : undefined, id: j.data?.id, followers: j.data?.public_metrics?.followers_count, avatar: j.data?.profile_image_url?.replace('_normal', '') } },
   },
   youtube: {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth', tokenUrl: 'https://oauth2.googleapis.com/token',
     scope: 'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/userinfo.profile', clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET, redirect: process.env.GOOGLE_REDIRECT_URI,
     extraAuth: { access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' },
     userinfo: async (t) => {
-      const j: any = await (await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true', { headers: { Authorization: `Bearer ${t}` } })).json()
+      const j: any = await (await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true', { headers: { Authorization: `Bearer ${t}` } })).json()
       const it = j.items?.[0]
-      if (it) return { handle: it.snippet?.customUrl || it.snippet?.title, id: it.id }
-      // account has no YouTube channel → fall back to the Google profile name
+      if (it) return { handle: it.snippet?.customUrl || it.snippet?.title, id: it.id, followers: +it.statistics?.subscriberCount || undefined, avatar: it.snippet?.thumbnails?.default?.url }
+      // account has no YouTube channel → fall back to the Google profile name + picture
       const u: any = await (await fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${t}` } })).json()
-      return { handle: u?.name ? '@' + String(u.name).replace(/\s+/g, '') : undefined, id: u?.id }
+      return { handle: u?.name ? '@' + String(u.name).replace(/\s+/g, '') : undefined, id: u?.id, avatar: u?.picture }
     },
   },
   tiktok: {
     authUrl: 'https://www.tiktok.com/v2/auth/authorize/', tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
     scope: 'user.info.basic', clientId: process.env.TIKTOK_CLIENT_KEY, clientSecret: process.env.TIKTOK_CLIENT_SECRET, redirect: process.env.TIKTOK_REDIRECT_URI,
     clientKeyParam: true,
-    // user.info.basic only returns display_name/avatar/open_id (NOT username — that needs user.info.profile)
-    userinfo: async (t) => { const j: any = await (await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url', { headers: { Authorization: `Bearer ${t}` } })).json(); const u = j.data?.user; return { handle: u?.display_name, id: u?.open_id } },
+    // user.info.basic returns display_name/avatar/open_id (follower_count needs user.info.profile → may be null)
+    userinfo: async (t) => { const j: any = await (await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url,follower_count', { headers: { Authorization: `Bearer ${t}` } })).json(); const u = j.data?.user; return { handle: u?.display_name, id: u?.open_id, followers: u?.follower_count, avatar: u?.avatar_url } },
   },
 }
 
@@ -105,9 +105,10 @@ export function socialRoutes(app: Hono, requireAuth: any) {
       const tj: any = await (await fetch(conf.tokenUrl, { method: 'POST', headers, body })).json()
       const accessToken = tj.access_token
       if (!accessToken) throw new Error(tj.error_description || tj.error || 'token exchange failed')
-      const { handle, id } = await conf.userinfo(accessToken)
+      const info = await conf.userinfo(accessToken)
+      const { handle, id } = info
       if (!handle) throw new Error('could not read your handle from the provider')
-      await repo.saveSocialAccount(st.wallet, platform, handle, { platformUserId: id, accessTokenEnc: enc(accessToken), refreshTokenEnc: enc(tj.refresh_token) })
+      await repo.saveSocialAccount(st.wallet, platform, handle, { platformUserId: id, accessTokenEnc: enc(accessToken), refreshTokenEnc: enc(tj.refresh_token), followers: info.followers, avatarUrl: info.avatar })
       return resultPage(c, { ok: true, platform, handle })
     } catch (e: any) {
       return resultPage(c, { ok: false, platform, error: e?.message ?? String(e) })

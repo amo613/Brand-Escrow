@@ -101,7 +101,7 @@ export function DealDetail({ id, wallet, role, onBalances, nav }: { id: string; 
                   {(d.applicants ?? []).length === 0 ? <div className="text-[12.5px] text-muted">No applicants yet — a creator needs to apply.</div> : (
                     <div className="flex flex-col gap-2.5">{d.applicants.map((a: any) => (
                       <div key={a.address} className="flex items-center gap-3"><Avatar size={40} name={a.handle || a.address} hue={C.agent} img={a.avatarUrl} ring />
-                        <div className="flex-1 min-w-0"><div className="text-[13.5px] text-txt flex items-center gap-1.5">{a.handle || 'creator'} {a.verified && <Icon name="check" size={12} c={C.mint} sw={3} />}</div><div className="num text-[11px] text-txt2 truncate">{a.followers ? `${fmtMetric(a.followers)} followers · ${a.engagement}% eng · ${short(a.address)}` : short(a.address)}</div></div>
+                        <div className="flex-1 min-w-0"><div className="text-[13.5px] text-txt flex items-center gap-1.5">{a.handle || 'creator'} {a.verified && <Icon name="check" size={12} c={C.mint} sw={3} />}</div><div className="num text-[11px] text-txt2 truncate">{a.followers ? `${fmtMetric(a.followers)} followers · ${short(a.address)}` : short(a.address)}</div></div>
                         <Button size="sm" variant="primary" icon="check" onClick={() => accept(a.address)} disabled={busy.startsWith('accept')}>{busy === 'accept-' + a.address ? 'Binding…' : 'Accept'}</Button>
                       </div>
                     ))}</div>
