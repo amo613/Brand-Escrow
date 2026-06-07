@@ -51,8 +51,8 @@ export default function App() {
     // role comes ONLY from the authenticated session — there is no role switcher.
     // Brands see brand things, creators see creator things.
     const items: { k: Screen['name']; label: string }[] = role === 'brand'
-      ? [{ k: 'studio', label: 'Brand Studio' }, { k: 'home', label: 'My Campaigns' }]
-      : [{ k: 'browse', label: 'Browse Deals' }, { k: 'home', label: 'My Deals' }]
+      ? [{ k: 'studio', label: 'Brand Studio' }, { k: 'home', label: 'My Campaigns' }, { k: 'leaderboard', label: 'Leaderboard' }]
+      : [{ k: 'browse', label: 'Browse Deals' }, { k: 'home', label: 'My Deals' }, { k: 'verify', label: 'Verify @handle' }, { k: 'leaderboard', label: 'Leaderboard' }]
     return (
       <div className="min-h-screen">
         <header className="sticky top-0 z-50 glass border-b border-line">

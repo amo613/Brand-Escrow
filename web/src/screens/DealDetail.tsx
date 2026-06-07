@@ -96,6 +96,7 @@ export function DealDetail({ id, wallet, role, onBalances, nav }: { id: string; 
               {role === 'creator' && !isBrand && applied && !isBoundCreator && <div className="text-[13px] text-amber flex items-center gap-2"><Icon name="clock" size={15} c={C.amber} /> Applied — waiting for the brand to accept you.</div>}
               {isBrand && !d.creator && (
                 <>
+                  <div className="text-[12.5px] text-txt2 mb-3 flex items-start gap-2"><Icon name="user" size={14} c={C.mint} className="mt-0.5 shrink-0" /><span>You funded this deal — accept a creator below. <span className="text-muted">To apply as a creator instead, open it from a different wallet.</span></span></div>
                   <div className="text-[12px] uppercase tracking-wider text-txt2 mb-3">Applicants {(d.applicants ?? []).length > 0 && `(${d.applicants.length})`}</div>
                   {(d.applicants ?? []).length === 0 ? <div className="text-[12.5px] text-muted">No applicants yet — a creator needs to apply.</div> : (
                     <div className="flex flex-col gap-2.5">{d.applicants.map((a: any) => (
