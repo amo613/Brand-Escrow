@@ -50,6 +50,47 @@ async function fetchXMetric(postUrl: string, metric: string): Promise<{ value: n
   } catch { return null }
 }
 
+type LiveProof = { value: number; handle?: string; content?: string; profileImage?: string } | null
+
+// YouTube Data API — real video stats (views/likes/comments). Needs GOOGLE_API_KEY.
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY ?? ''
+const ytVideoId = (url: string): string | null => url.match(/(?:v=|youtu\.be\/|\/shorts\/|\/live\/|\/embed\/)([\w-]{11})/)?.[1] ?? null
+async function fetchYouTubeMetric(postUrl: string, metric: string): Promise<LiveProof> {
+  const id = ytVideoId(postUrl)
+  if (!id || !GOOGLE_API_KEY) return null
+  try {
+    const r = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${id}&key=${GOOGLE_API_KEY}`)
+    if (!r.ok) return null
+    const it: any = (await r.json()).items?.[0]
+    if (!it) return null
+    const st = it.statistics ?? {}
+    const map: Record<string, number> = { likes: +st.likeCount || 0, views: +st.viewCount || 0, comments: +st.commentCount || 0, shares: 0, followers: 0 }
+    const value = metric === 'posted' ? 1 : map[metric]
+    if (value == null) return null
+    return { value, handle: it.snippet?.channelTitle ? '@' + String(it.snippet.channelTitle).replace(/\s+/g, '') : undefined, content: `${it.snippet?.title ?? ''} ${it.snippet?.description ?? ''}`, profileImage: it.snippet?.thumbnails?.default?.url }
+  } catch { return null }
+}
+
+// TikTok via Apify (clockworks~tiktok-scraper). Real likes/views/comments/shares. Slow-ish (run-sync).
+const APIFY = process.env.APIFY_API_TOKEN ?? ''
+async function fetchTikTokMetric(postUrl: string, metric: string): Promise<LiveProof> {
+  if (!APIFY || !/tiktok\.com/i.test(postUrl)) return null
+  try {
+    const r = await fetch(`https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items?token=${APIFY}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postURLs: [postUrl], resultsPerPage: 1, shouldDownloadVideos: false, shouldDownloadCovers: false, shouldDownloadSubtitles: false }),
+      signal: AbortSignal.timeout(55000),
+    })
+    if (!r.ok) return null
+    const it: any = (await r.json())?.[0]
+    if (!it) return null
+    const map: Record<string, number> = { likes: it.diggCount ?? 0, views: it.playCount ?? 0, comments: it.commentCount ?? 0, shares: it.shareCount ?? 0, followers: it.authorMeta?.fans ?? 0 }
+    const value = metric === 'posted' ? 1 : map[metric]
+    if (value == null) return null
+    return { value, handle: it.authorMeta?.name ? '@' + it.authorMeta.name : undefined, content: it.text ?? '', profileImage: it.authorMeta?.avatar }
+  } catch { return null }
+}
+
 const overrides = new Map<string, number>() // key `${postUrl}|${metric}` -> value
 export const setMetricOverride = (postUrl: string, metric: string, value: number) => overrides.set(`${postUrl}|${metric}`, value)
 export const clearMetricOverride = (postUrl: string, metric: string) => overrides.delete(`${postUrl}|${metric}`)
@@ -85,22 +126,31 @@ export function profileImageUrl(platform: string, handle: string): string {
 
 export async function fetchProof(platform: string, postUrl: string, metric: string): Promise<Proof> {
   const override = overrides.get(`${postUrl}|${metric}`)
-  // 1) admin override wins (Test Console). 2) real X API. 3) deterministic demo fixture.
-  const live = override == null && (platform === 'x' || platform === 'twitter') ? await fetchXMetric(postUrl, metric) : null
+  // 1) admin override wins (Test Console). 2) real platform API (X / YouTube / TikTok). 3) deterministic fixture.
+  let live: LiveProof = null
+  if (override == null) {
+    if (platform === 'x' || platform === 'twitter') live = await fetchXMetric(postUrl, metric)
+    else if (platform === 'youtube') live = await fetchYouTubeMetric(postUrl, metric)
+    else if (platform === 'tiktok') live = await fetchTikTokMetric(postUrl, metric)
+  }
   const real = live != null
   const authorHandle = live?.handle ?? deriveHandle(postUrl, platform)
   const metricValue = override ?? live?.value ?? deterministicMetric(postUrl, metric)
+  const content = live?.content ?? `Training in the new gear 🔥 link in bio #PactPay @nike — ${authorHandle}`
+  // tags are TRACKED from the real post content — not hardcoded. Empty post → empty tags.
+  const hashtags = content.match(/#[\p{L}\p{N}_]+/gu) ?? []
+  const mentions = content.match(/@[\p{L}\p{N}_]+/gu) ?? []
   return {
     authorHandle,
     platform,
     metric,
     metricValue,
-    content: live?.content ?? `Training in the new gear 🔥 link in bio #PactPay @nike — ${authorHandle}`,
-    hashtags: ['#PactPay'],
-    mentions: ['@nike'],
+    content,
+    hashtags,
+    mentions,
     mediaType: 'video',
     profileImage: live?.profileImage ?? profileImageUrl(platform, authorHandle),
-    source: real ? 'live · X API v2' : override != null ? 'admin override (test)' : `demo fixture (${platform})`,
+    source: real ? `live · ${platform === 'tiktok' ? 'Apify TikTok' : platform === 'youtube' ? 'YouTube Data API' : 'X API v2'}` : override != null ? 'admin override (test)' : `demo fixture (${platform})`,
     real,
     fetchedAt: Date.now(),
   }

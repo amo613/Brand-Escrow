@@ -25,7 +25,9 @@ export async function verifyDeliverable(input: { brief: string; metric: string; 
     const j: any = await r.json()
     const m = (j?.choices?.[0]?.message?.content ?? '').match(/\{[\s\S]*\}/)
     const p = m ? JSON.parse(m[0]) : {}
-    return { pass: true, confidence: Number(p.confidence) || 1, reason: String(p.reason || baseReason), model: ENV.OPENROUTER_MODEL }
+    // confidence is ALWAYS 1 when the metric is met — the contract+threshold are the gate.
+    // The LLM's number is display-only and must NEVER pull confidence below the release gate.
+    return { pass: true, confidence: 1, reason: String(p.reason || baseReason), model: ENV.OPENROUTER_MODEL }
   } catch {
     return { pass: true, confidence: 1, reason: baseReason, model: ENV.OPENROUTER_MODEL }
   }

@@ -57,7 +57,7 @@ export function DealDetail({ id, wallet, role, onBalances, nav }: { id: string; 
             <div className="flex items-center gap-3 mb-3">
               <Avatar size={38} glyph="◆" hue={C.mint} />
               <Icon name="arrow" size={16} c={C.muted} />
-              <Avatar size={38} name={d.creatorHandle || d.creator || '—'} hue={C.agent} ring />
+              <Avatar size={38} name={d.creatorHandle || d.creator || '—'} hue={C.agent} ring img={d.creatorStats?.avatarUrl} />
               <Pill status={d.status} />
             </div>
             <h1 className="font-display text-[26px] font-semibold tracking-tight leading-tight text-balance">{d.title}</h1>
@@ -100,8 +100,8 @@ export function DealDetail({ id, wallet, role, onBalances, nav }: { id: string; 
                   <div className="text-[12px] uppercase tracking-wider text-txt2 mb-3">Applicants {(d.applicants ?? []).length > 0 && `(${d.applicants.length})`}</div>
                   {(d.applicants ?? []).length === 0 ? <div className="text-[12.5px] text-muted">No applicants yet — a creator needs to apply.</div> : (
                     <div className="flex flex-col gap-2.5">{d.applicants.map((a: any) => (
-                      <div key={a.address} className="flex items-center gap-3"><Avatar size={34} name={a.handle || a.address} hue={C.agent} />
-                        <div className="flex-1 min-w-0"><div className="text-[13px] text-txt flex items-center gap-1.5">{a.handle || 'creator'} {a.verified && <Icon name="check" size={12} c={C.mint} sw={3} />}</div><div className="num text-[11px] text-txt2 truncate">{short(a.address)}</div></div>
+                      <div key={a.address} className="flex items-center gap-3"><Avatar size={40} name={a.handle || a.address} hue={C.agent} img={a.avatarUrl} ring />
+                        <div className="flex-1 min-w-0"><div className="text-[13.5px] text-txt flex items-center gap-1.5">{a.handle || 'creator'} {a.verified && <Icon name="check" size={12} c={C.mint} sw={3} />}</div><div className="num text-[11px] text-txt2 truncate">{a.followers ? `${fmtMetric(a.followers)} followers · ${a.engagement}% eng · ${short(a.address)}` : short(a.address)}</div></div>
                         <Button size="sm" variant="primary" icon="check" onClick={() => accept(a.address)} disabled={busy.startsWith('accept')}>{busy === 'accept-' + a.address ? 'Binding…' : 'Accept'}</Button>
                       </div>
                     ))}</div>
@@ -122,7 +122,7 @@ export function DealDetail({ id, wallet, role, onBalances, nav }: { id: string; 
             {d.postUrl ? (
               <>
                 <div className="p-4 flex items-center gap-3 border-b border-line">
-                  <Avatar size={40} name={d.creatorHandle || d.creator || '—'} hue={C.agent} ring />
+                  <Avatar size={40} name={d.creatorHandle || d.creator || '—'} hue={C.agent} ring img={d.creatorStats?.avatarUrl} />
                   <div className="leading-tight flex-1 min-w-0"><div className="text-[14px] font-medium text-txt flex items-center gap-1.5">{d.creatorHandle || short(d.creator)} {d.creator && <Icon name="check" size={12} c={C.mint} sw={3} />}</div><div className="num text-[11.5px] text-txt2"><Platform p={d.platform} c={C.txt2} /> · tracked post</div></div>
                   <a href={d.postUrl} target="_blank" rel="noreferrer" className="num text-[12px] text-chain hover:underline inline-flex items-center gap-1">open post <Icon name="ext" size={11} c={C.chain} sw={2} /></a>
                 </div>
@@ -179,7 +179,18 @@ export function DealDetail({ id, wallet, role, onBalances, nav }: { id: string; 
           </Card>
 
           {/* brief */}
-          <Card className="p-5"><div className="text-[12px] uppercase tracking-wider text-txt2 mb-2">The brief</div><p className="text-[13.5px] text-txt2 leading-relaxed text-pretty">{d.brief}</p></Card>
+          <Card className="p-5">
+            <div className="text-[12px] uppercase tracking-wider text-txt2 mb-2">The brief</div>
+            <p className="text-[13.5px] text-txt2 leading-relaxed text-pretty">{d.brief}</p>
+            {d.required && (d.required.hashtag || d.required.mention || d.required.link || d.required.media) && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {d.required.hashtag && <Pill text={d.required.hashtag} color="chain" size="sm" dot={false} />}
+                {d.required.mention && <Pill text={d.required.mention} color="agent" size="sm" dot={false} />}
+                {d.required.link && <Pill text={'🔗 ' + d.required.link} color="muted" size="sm" dot={false} />}
+                {d.required.media && <Pill text={d.required.media} color="muted" size="sm" dot={false} />}
+              </div>
+            )}
+          </Card>
         </div>
 
         {/* RIGHT — trust panel */}

@@ -39,15 +39,23 @@ const CFG: Record<string, PlatformCfg> = {
   },
   youtube: {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth', tokenUrl: 'https://oauth2.googleapis.com/token',
-    scope: 'https://www.googleapis.com/auth/youtube.readonly', clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET, redirect: process.env.GOOGLE_REDIRECT_URI,
+    scope: 'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/userinfo.profile', clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET, redirect: process.env.GOOGLE_REDIRECT_URI,
     extraAuth: { access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' },
-    userinfo: async (t) => { const j: any = await (await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true', { headers: { Authorization: `Bearer ${t}` } })).json(); const it = j.items?.[0]; return { handle: it?.snippet?.customUrl || it?.snippet?.title, id: it?.id } },
+    userinfo: async (t) => {
+      const j: any = await (await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true', { headers: { Authorization: `Bearer ${t}` } })).json()
+      const it = j.items?.[0]
+      if (it) return { handle: it.snippet?.customUrl || it.snippet?.title, id: it.id }
+      // account has no YouTube channel → fall back to the Google profile name
+      const u: any = await (await fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${t}` } })).json()
+      return { handle: u?.name ? '@' + String(u.name).replace(/\s+/g, '') : undefined, id: u?.id }
+    },
   },
   tiktok: {
     authUrl: 'https://www.tiktok.com/v2/auth/authorize/', tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
     scope: 'user.info.basic', clientId: process.env.TIKTOK_CLIENT_KEY, clientSecret: process.env.TIKTOK_CLIENT_SECRET, redirect: process.env.TIKTOK_REDIRECT_URI,
     clientKeyParam: true,
-    userinfo: async (t) => { const j: any = await (await fetch('https://open.tiktokapis.com/v2/user/info/?fields=display_name,username', { headers: { Authorization: `Bearer ${t}` } })).json(); return { handle: j.data?.user?.username ? '@' + j.data.user.username : j.data?.user?.display_name, id: j.data?.user?.open_id } },
+    // user.info.basic only returns display_name/avatar/open_id (NOT username — that needs user.info.profile)
+    userinfo: async (t) => { const j: any = await (await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url', { headers: { Authorization: `Bearer ${t}` } })).json(); const u = j.data?.user; return { handle: u?.display_name, id: u?.open_id } },
   },
 }
 

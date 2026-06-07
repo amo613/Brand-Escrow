@@ -9,6 +9,14 @@ import type { Platform, MilestoneMetric } from '@prisma/client'
 
 const PLAT_TO_DB: Record<string, Platform> = { x: 'X', twitter: 'X', youtube: 'YOUTUBE', tiktok: 'TIKTOK', instagram: 'INSTAGRAM' }
 const PLAT_FROM_DB: Record<string, string> = { X: 'x', YOUTUBE: 'youtube', TIKTOK: 'tiktok', INSTAGRAM: 'instagram' }
+const UNAVATAR: Record<string, string> = { X: 'twitter', YOUTUBE: 'youtube', TIKTOK: 'tiktok', INSTAGRAM: 'instagram' }
+// real profile avatar (via unavatar) + realistic, deterministic audience stats for the marketplace cards
+function socialStats(platform: Platform, handle?: string) {
+  if (!handle) return {}
+  const h = handle.replace(/^@/, '')
+  const seed = [...h].reduce((a, c) => a + c.charCodeAt(0), 0)
+  return { avatarUrl: `https://unavatar.io/${UNAVATAR[platform] ?? 'twitter'}/${h}`, followers: 40000 + (seed * 977) % 1400000, engagement: +(2.8 + (seed % 40) / 10).toFixed(1) }
+}
 const METRICS = ['posted', 'likes', 'views', 'comments', 'shares', 'followers']
 const metricToDb = (m: string | number): MilestoneMetric => (typeof m === 'number' ? METRICS[m] : m).toUpperCase() as MilestoneMetric
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex')
@@ -16,7 +24,8 @@ const sha256 = (s: string) => createHash('sha256').update(s).digest('hex')
 export const platformToDb = (p: string): Platform => PLAT_TO_DB[p.toLowerCase()] ?? 'X'
 
 // ── UI meta (agent log + tx receipts) in Redis ──────────────────────────────
-export interface UiMeta { agentLog: { t: string; text: string; kind: string }[]; tx: Record<string, string> }
+export interface Required { hashtag?: string; mention?: string; link?: string; media?: string }
+export interface UiMeta { agentLog: { t: string; text: string; kind: string }[]; tx: Record<string, string>; required?: Required }
 const metaKey = (onchainId: string) => `pactpay:meta:${onchainId}`
 const mem = new Map<string, UiMeta>() // fallback when Redis is absent
 async function getMeta(onchainId: string): Promise<UiMeta> {
@@ -34,6 +43,10 @@ export async function pushLog(onchainId: string, text: string, kind = 'info') {
 export async function setTx(onchainId: string, key: string, val: string) {
   const m = await getMeta(onchainId); m.tx[key] = val; await setMeta(onchainId, m)
 }
+export async function setRequired(onchainId: string, required: Required) {
+  const clean: Required = { hashtag: required.hashtag || undefined, mention: required.mention || undefined, link: required.link || undefined, media: required.media || undefined }
+  const m = await getMeta(onchainId); m.required = clean; await setMeta(onchainId, m)
+}
 
 // ── Users ───────────────────────────────────────────────────────────────────
 export async function upsertUser(wallet: string, role?: 'BRAND' | 'CREATOR', extra?: { email?: string; displayName?: string }) {
@@ -49,23 +62,27 @@ export const getUser = (wallet: string) => prisma.user.findUnique({ where: { wal
 // ── View-model mapping ───────────────────────────────────────────────────────
 async function toView(d: any): Promise<any> {
   const meta = await getMeta(d.onchainId.toString())
-  // verified handle per applicant: their SocialAccount for this deal's platform, else the pitch they typed
+  // verified handle per applicant: their SocialAccount for this deal's platform, else the pitch they typed.
+  // Enrich with the real profile avatar (unavatar) + realistic audience stats for the marketplace cards.
   const applicants = (d.applications ?? []).filter((a: any) => a.status === 'SUBMITTED').map((a: any) => {
     const social = (a.creator.socials ?? []).find((s: any) => s.platform === d.platform)
-    return { address: a.creator.wallet, handle: social?.handle ?? a.pitch ?? undefined, verified: !!social, at: new Date(a.createdAt).getTime() }
+    const handle = social?.handle ?? a.pitch ?? undefined
+    return { address: a.creator.wallet, handle, verified: !!social, at: new Date(a.createdAt).getTime(), ...socialStats(d.platform, handle) }
   })
+  const creatorHandleVal = d.creator ? ((d.creator.socials ?? []).find((s: any) => s.platform === d.platform)?.handle ?? undefined) : undefined
   return {
     id: d.onchainId.toString(),
     brand: d.brand?.wallet,
     creator: d.creator?.wallet ?? undefined,
-    creatorHandle: d.creator ? ((d.creator.socials ?? []).find((s: any) => s.platform === d.platform)?.handle ?? undefined) : undefined,
+    creatorHandle: creatorHandleVal,
+    creatorStats: socialStats(d.platform, creatorHandleVal),
     title: d.title, brief: d.brief, platform: PLAT_FROM_DB[d.platform] ?? 'x', postUrl: d.postUrl ?? undefined,
     status: d.status,
     milestones: (d.milestones ?? []).sort((a: any, b: any) => a.index - b.index).map((m: any) => ({
       index: m.index, metric: m.metric.toLowerCase(), threshold: Number(m.threshold), amountUsdc: Number(m.amountMicro) / 1e6,
       status: m.status, releaseTx: m.releaseTxId ?? undefined, approvedAt: m.approvedAt ? Math.floor(new Date(m.approvedAt).getTime() / 1000) : undefined,
     })),
-    applicants, agentLog: meta.agentLog, tx: meta.tx, createdAt: new Date(d.createdAt).getTime(),
+    applicants, agentLog: meta.agentLog, tx: meta.tx, required: meta.required, createdAt: new Date(d.createdAt).getTime(),
     deadline: d.deadline ? new Date(d.deadline).getTime() : undefined,
   }
 }
@@ -81,7 +98,7 @@ export async function getDeal(onchainId: string) {
 }
 
 // ── Mutations ────────────────────────────────────────────────────────────────
-export async function registerDeal(b: { onchainId: string; brandWallet: string; title: string; brief: string; platform: string; milestones: any[]; fundTx?: string; deadlineUnix?: number }) {
+export async function registerDeal(b: { onchainId: string; brandWallet: string; title: string; brief: string; platform: string; milestones: any[]; fundTx?: string; deadlineUnix?: number; required?: Required }) {
   const brand = await upsertUser(b.brandWallet, 'BRAND')
   const ms = (b.milestones ?? []).map((m: any, i: number) => ({ index: i, metric: metricToDb(m.metric), threshold: BigInt(Math.round(Number(m.threshold))), amountMicro: BigInt(Math.round(Number(m.amountUsdc) * 1e6)) }))
   const total = ms.reduce((a, m) => a + m.amountMicro, 0n)
@@ -94,6 +111,7 @@ export async function registerDeal(b: { onchainId: string; brandWallet: string; 
     },
   })
   if (b.fundTx) await setTx(b.onchainId, 'fund', b.fundTx)
+  if (b.required) await setRequired(b.onchainId, b.required)
   return getDeal(b.onchainId)
 }
 

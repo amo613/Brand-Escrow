@@ -88,8 +88,8 @@ export function Dashboard({ wallet, role, balances, onBalances, health, nav }: {
         applicants.length === 0 ? <Card className="p-12 text-center text-txt2">No applicants yet. Share your funded deals with creators.</Card> : (
           <div className="flex flex-col gap-3">{applicants.map((a, i) => (
             <Card key={i} hover onClick={() => nav('deal', a.deal.id)} className="p-4 flex items-center gap-4 flex-wrap">
-              <Avatar size={42} name={a.handle || a.address} hue={C.agent} ring />
-              <div className="flex-1 min-w-[220px]"><div className="flex items-center gap-2"><span className="text-[14px] text-txt font-medium">{a.handle || 'creator'}</span>{a.verified && <Icon name="check" size={12} c={C.mint} sw={3} />}<span className="num text-[11.5px] text-txt2">{short(a.address)}</span></div><div className="text-[12px] text-mint mt-0.5">applied to · {a.deal.title.slice(0, 40)}</div></div>
+              <Avatar size={42} name={a.handle || a.address} hue={C.agent} ring img={a.avatarUrl} />
+              <div className="flex-1 min-w-[220px]"><div className="flex items-center gap-2 flex-wrap"><span className="text-[14px] text-txt font-medium">{a.handle || 'creator'}</span>{a.verified && <Icon name="check" size={12} c={C.mint} sw={3} />}{a.followers && <span className="num text-[11.5px] text-txt2">{fmtMetric(a.followers)} foll · {a.engagement}% eng</span>}</div><div className="text-[12px] text-mint mt-0.5">applied to · {a.deal.title.slice(0, 40)}</div></div>
               <Button size="sm" variant="primary" iconR="arrow">Review &amp; accept</Button>
             </Card>
           ))}</div>

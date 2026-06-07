@@ -114,9 +114,14 @@ export function TimelockRing({ endsAt, total, size = 64, stroke = 5, label = tru
   )
 }
 
-export function Avatar({ name, glyph, hue = C.agent, size = 36, ring }: { name?: string; glyph?: string; hue?: string; size?: number; ring?: boolean }) {
+export function Avatar({ name, glyph, hue = C.agent, size = 36, ring, img }: { name?: string; glyph?: string; hue?: string; size?: number; ring?: boolean; img?: string }) {
+  const [broke, setBroke] = useState(false)
   const init = glyph || (name ? name.replace(/^@/, '').slice(0, 2).toUpperCase() : '??')
-  return <div className="grid place-items-center rounded-full font-display font-semibold shrink-0" style={{ width: size, height: size, fontSize: size * 0.4, color: '#0A0C10', background: `linear-gradient(135deg, ${hue}, ${hue}99)`, boxShadow: ring ? `0 0 0 2px var(--ink), 0 0 0 3px ${hue}66` : 'none' }}>{init}</div>
+  return (
+    <div className="grid place-items-center rounded-full font-display font-semibold shrink-0 overflow-hidden" style={{ width: size, height: size, fontSize: size * 0.4, color: '#0A0C10', background: `linear-gradient(135deg, ${hue}, ${hue}99)`, boxShadow: ring ? `0 0 0 2px var(--ink), 0 0 0 3px ${hue}66` : 'none' }}>
+      {img && !broke ? <img src={img} alt="" width={size} height={size} className="w-full h-full object-cover" onError={() => setBroke(true)} /> : init}
+    </div>
+  )
 }
 
 export function DataRow({ label, children, mono = true, sub }: { label: string; children: ReactNode; mono?: boolean; sub?: string }) {

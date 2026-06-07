@@ -27,14 +27,15 @@ async function settle(d: any, ms: any) {
 async function track(d: any, ms: any, oracleUrl: string) {
   const key = `${d.id}:${ms.index}`
   if (Date.now() - (lastTry.get(key) ?? 0) < COOLDOWN_MS) return
+  lastTry.set(key, Date.now()) // rate-limit the WHOLE check (incl. the slow/paid platform peek), not just escalation
   // cheap peek (no x402); only escalate to the paid agent when the threshold is actually reached
   const peek = await fetchProof(d.platform, d.postUrl, ms.metric)
   if (peek.metricValue < ms.threshold) return
-  lastTry.set(key, Date.now())
   await repo.pushLog(d.id, `tracking worker: ${ms.metric}=${peek.metricValue} ≥ ${ms.threshold} — escalating to agent`, 'info')
   const { proof, x402Tx, verdict } = await agentCheck({ oracleUrl, platform: d.platform, postUrl: d.postUrl, metric: ms.metric, threshold: ms.threshold, brief: d.brief })
   if (x402Tx) await repo.pushLog(d.id, `paid 0.01 USDC via x402 for proof  [tx ${x402Tx.slice(0, 6)}… →]`, 'chain')
   await repo.pushLog(d.id, `proof: ${proof.authorHandle} ${proof.metric}=${proof.metricValue}${proof.real ? ' (live)' : ''} ✓`)
+  await repo.pushLog(d.id, `tags tracked: ${[...proof.hashtags, ...proof.mentions].join(' ') || '(none in post)'}`)
   await repo.pushLog(d.id, `LLM verdict: ${verdict.pass ? 'PASS' : 'FAIL'} · confidence ${verdict.confidence}`, 'verdict')
   let verdictTx: string | undefined
   if (verdict.pass && verdict.confidence * 100 >= ENV.MIN_CONFIDENCE) {

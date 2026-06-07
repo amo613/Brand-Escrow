@@ -198,7 +198,7 @@ function FundingModal({ open, form, total, wallet, onClose, onFunded }: { open: 
       const milestones = src.map((m) => ({ metric: METRIC_NUM[m.metric] ?? 1, threshold: m.metric === 'posted' ? 1 : Math.round(+m.threshold), amountUsdc: +m.amount }))
       const dl = Math.floor(new Date(form.deadline).getTime() / 1000)
       const r = await createAndFundDeal(wallet, milestones, dl)
-      await api.registerDeal({ onchainId: r.dealId, title: form.title, brief: form.brief, platform: form.platform, milestones, fundTx: r.txId, deadlineUnix: dl })
+      await api.registerDeal({ onchainId: r.dealId, title: form.title, brief: form.brief, platform: form.platform, milestones, fundTx: r.txId, deadlineUnix: dl, required: { hashtag: form.hashtag, mention: form.mention, link: form.link, media: form.media } })
       setTx(r.txId); setDealId(r.dealId); setPhase('done'); fireConfetti()
     } catch (e: any) { setErr(e?.message ?? String(e)); setPhase('confirm') }
   }

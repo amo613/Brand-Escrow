@@ -93,7 +93,7 @@ app.get('/api/deals/:id', async (c) => { const d = await repo.getDeal(c.req.para
 app.post('/api/deals', requireAuth, async (c) => {
   const wallet = c.get('wallet') as string
   const b = await c.req.json()
-  const d = await repo.registerDeal({ onchainId: String(b.onchainId), brandWallet: wallet, title: b.title, brief: b.brief, platform: b.platform, milestones: b.milestones ?? [], fundTx: b.fundTx, deadlineUnix: b.deadlineUnix })
+  const d = await repo.registerDeal({ onchainId: String(b.onchainId), brandWallet: wallet, title: b.title, brief: b.brief, platform: b.platform, milestones: b.milestones ?? [], fundTx: b.fundTx, deadlineUnix: b.deadlineUnix, required: b.required })
   return c.json(d)
 })
 /** creator applies to a funded deal (registers interest + their verified @handle) */
@@ -136,6 +136,7 @@ app.post('/api/deals/:id/run-agent', requireAuth, async (c) => {
     const { proof, x402Tx, verdict } = await agentCheck({ oracleUrl, platform: d.platform, postUrl: d.postUrl, metric: ms.metric, threshold: ms.threshold, brief: d.brief })
     if (x402Tx) await repo.pushLog(id, `paid 0.01 USDC via x402 for proof  [tx ${x402Tx.slice(0, 6)}… →]`, 'chain')
     await repo.pushLog(id, `proof: ${proof.authorHandle} ${proof.metric}=${proof.metricValue}${proof.real ? ' (live)' : ''} ✓`)
+    await repo.pushLog(id, `tags tracked: ${[...proof.hashtags, ...proof.mentions].join(' ') || '(none in post)'}`)
     await repo.pushLog(id, `LLM verdict: ${verdict.pass ? 'PASS' : 'FAIL'} · confidence ${verdict.confidence}`, 'verdict')
     let verdictTx: string | undefined
     if (verdict.pass && verdict.confidence * 100 >= ENV.MIN_CONFIDENCE) {
