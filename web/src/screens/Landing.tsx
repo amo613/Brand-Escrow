@@ -200,7 +200,7 @@ export function Landing({ onAuth }: { onAuth: (role: Role) => void }) {
             <div key={i}><div className="text-[13px] text-txt font-medium mb-3">{h}</div>{items.map((it, j) => <div key={j} className="text-[13px] text-txt2 hover:text-txt cursor-pointer py-1 transition-colors">{it}</div>)}</div>
           ))}
         </div>
-        <div className="max-w-[1320px] mx-auto px-5 py-5 border-t border-line text-[12.5px] text-muted flex flex-wrap gap-2 justify-between"><span>© 2026 PactPay Labs · TestNet demo</span><span className="num">Built on Algorand × x402</span></div>
+        <div className="max-w-[1320px] mx-auto px-5 py-5 border-t border-line text-[12.5px] text-muted flex flex-wrap gap-2 justify-between"><span>© 2026 LockPay Labs · TestNet demo</span><span className="num">Built on Algorand × x402</span></div>
       </footer>
     </div>
   )

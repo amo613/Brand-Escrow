@@ -1,5 +1,5 @@
 /**
- * PactPay backend HTTP API (Hono).
+ * LockPay backend HTTP API (Hono).
  *  x402 proof oracle · wallet auth · airdrop · deals (register/accept/submit/run-agent/release)
  *  · admin metric override (Test Console).
  * Run from backend/:  npm run dev
@@ -188,7 +188,7 @@ app.post('/api/admin/metric-override', requireAuth, async (c) => {
 
 const port = Number(process.env.PORT ?? process.env.API_PORT ?? 8080)
 serve({ fetch: app.fetch, port, hostname: '0.0.0.0' })
-console.log(`[api] PactPay backend on :${port} — escrowApp ${ENV.ESCROW_APP_ID}, tUSDC ${ENV.USDC_ASA}`)
+console.log(`[api] LockPay backend on :${port} — escrowApp ${ENV.ESCROW_APP_ID}, tUSDC ${ENV.USDC_ASA}`)
 
 // autonomous loop: track metrics → run agent at threshold → auto-release after the window
 startWorkers(`http://localhost:${port}`)

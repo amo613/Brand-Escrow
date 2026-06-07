@@ -136,7 +136,7 @@ export async function fetchProof(platform: string, postUrl: string, metric: stri
   const real = live != null
   const authorHandle = live?.handle ?? deriveHandle(postUrl, platform)
   const metricValue = override ?? live?.value ?? deterministicMetric(postUrl, metric)
-  const content = live?.content ?? `Training in the new gear 🔥 link in bio #PactPay @nike — ${authorHandle}`
+  const content = live?.content ?? `Training in the new gear 🔥 link in bio #LockPay @nike — ${authorHandle}`
   // tags are TRACKED from the real post content — not hardcoded. Empty post → empty tags.
   const hashtags = content.match(/#[\p{L}\p{N}_]+/gu) ?? []
   const mentions = content.match(/@[\p{L}\p{N}_]+/gu) ?? []

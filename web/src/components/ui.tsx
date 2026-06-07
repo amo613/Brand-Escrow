@@ -1,4 +1,4 @@
-/* PactPay UI primitives — ported 1:1 from the design prototype (js/ui.jsx). */
+/* LockPay UI primitives — ported 1:1 from the design prototype (js/ui.jsx). */
 import { useEffect, useMemo, useRef, useState, type ReactNode, type CSSProperties } from 'react'
 import { loraTx } from '../lib/api.ts'
 import { fmtInt, fmtCountdown, STATUS } from '../lib/format.ts'
@@ -10,13 +10,13 @@ export function Logo({ size = 28, withWord = true }: { size?: number; withWord?:
   const id = useMemo(() => 'lg' + Math.random().toString(36).slice(2, 7), [])
   return (
     <div className="flex items-center gap-2.5 select-none">
-      <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-label="PactPay">
+      <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-label="LockPay">
         <defs><linearGradient id={id} x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stopColor="#00E5A8" /><stop offset="1" stopColor="#7C5CFF" /></linearGradient></defs>
         <rect x="5.5" y="13" width="21" height="16" rx="4.5" stroke={`url(#${id})`} strokeWidth="2" />
         <path d="M11 13V9.5a5 5 0 0 1 10 0V13" stroke={`url(#${id})`} strokeWidth="2" strokeLinecap="round" />
         <path d="M11.5 21.2l3.1 3.1 6-6.4" stroke="#00E5A8" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      {withWord && <span className="font-display font-semibold tracking-tight text-[19px] text-txt">PactPay</span>}
+      {withWord && <span className="font-display font-semibold tracking-tight text-[19px] text-txt">LockPay</span>}
     </div>
   )
 }

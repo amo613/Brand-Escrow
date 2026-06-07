@@ -211,7 +211,7 @@ export function DealDetail({ id, wallet, role, onBalances, nav }: { id: string; 
           <Card className="p-4">
             <div className="flex items-center gap-2 mb-3"><Icon name="lock" size={15} c={C.mint} /><span className="text-[12px] uppercase tracking-wider text-txt2">Live guardrails</span></div>
             <div className="flex flex-col gap-2">
-              {([['Recipient locked', d.creator ? short(d.creator) : 'on accept', !!d.creator], ['Amount locked', 'per milestone', true], ['Metric re-checked on-chain', '≥ threshold', true], ['Oracle-only attestation', 'PactPay oracle', true], ['Challenge window', `${WINDOW}s timelock`, true], ['Refund to brand', 'after deadline', true]] as [string, string, boolean][]).map(([t, v, ok], i) => (
+              {([['Recipient locked', d.creator ? short(d.creator) : 'on accept', !!d.creator], ['Amount locked', 'per milestone', true], ['Metric re-checked on-chain', '≥ threshold', true], ['Oracle-only attestation', 'LockPay oracle', true], ['Challenge window', `${WINDOW}s timelock`, true], ['Refund to brand', 'after deadline', true]] as [string, string, boolean][]).map(([t, v, ok], i) => (
                 <div key={i} className="flex items-start gap-2.5"><Icon name={ok ? 'check' : 'clock'} size={14} c={ok ? C.mint : C.amber} sw={2.6} className="mt-0.5 shrink-0" /><div className="flex-1 min-w-0"><div className="text-[12.5px] text-txt">{t}</div><div className="num text-[11.5px] text-txt2 truncate">{v}</div></div></div>
               ))}
             </div>

@@ -42,9 +42,9 @@ export function Studio({ wallet, nav, onDone }: { wallet: Wallet; nav: (n: Scree
   const [maxReached, setMaxReached] = useState(0)
   const [funding, setFunding] = useState(false)
   const [form, setForm] = useState({
-    title: 'Post a Reel featuring #PactPay + @nike',
+    title: 'Post a Reel featuring #LockPay + @nike',
     brief: 'Film a 15–30s reel showing your training routine with our gear visible. Authentic > polished.',
-    platform: 'x', hashtag: '#PactPay', mention: '@nike', link: 'nike.com/pactpay', media: 'video',
+    platform: 'x', hashtag: '#LockPay', mention: '@nike', link: 'nike.com/pactpay', media: 'video',
     mode: 'milestones' as 'full' | 'milestones',
     fullAmount: 2, fullMetric: 'posted', fullThreshold: 50000,
     milestones: [

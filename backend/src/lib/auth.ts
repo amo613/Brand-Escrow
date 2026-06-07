@@ -8,7 +8,7 @@ const challenges = new Map<string, { msg: string; exp: number }>()
 
 export function makeChallenge(address: string): string {
   const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36)
-  const msg = `PactPay login\nAddress: ${address}\nNonce: ${nonce}\nIssued: ${Date.now()}`
+  const msg = `LockPay login\nAddress: ${address}\nNonce: ${nonce}\nIssued: ${Date.now()}`
   challenges.set(address, { msg, exp: Date.now() + 300_000 })
   return msg
 }
