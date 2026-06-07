@@ -23,7 +23,8 @@ export function Studio({ wallet, nav, onDone }: { wallet: Wallet; nav: (n: Scree
     setErr(''); setBusy('Signing the funding group…')
     try {
       const dl = Math.floor(new Date(deadline).getTime() / 1000)
-      const milestones = ms.map((m) => ({ metric: m.metric, threshold: +m.threshold, amountUsdc: +m.amountUsdc }))
+      // delivery (metric 0 = "posted") is a boolean → threshold is always 1, never a leftover count
+      const milestones = ms.map((m) => ({ metric: m.metric, threshold: m.metric === 0 ? 1 : +m.threshold, amountUsdc: +m.amountUsdc }))
       const { dealId, txId } = await createAndFundDeal(wallet, milestones, dl)
       setBusy('Registering deal…')
       await api.registerDeal({ onchainId: dealId, title, brief, platform, milestones, fundTx: txId })

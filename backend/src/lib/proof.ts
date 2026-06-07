@@ -72,9 +72,10 @@ function deriveHandle(postUrl: string, platform: string): string {
 }
 
 function deterministicMetric(postUrl: string, metric: string): number {
+  if (metric === 'posted') return 1 // delivery is a boolean: they submitted a post → 1 (never a random count)
   const seed = [...(postUrl + metric)].reduce((a, c) => a + c.charCodeAt(0), 0)
-  const base = { likes: 6000, views: 80000, comments: 800, shares: 400, posted: 1 }[metric] ?? 5000
-  return Math.round(base + (seed % 5000))
+  const base: Record<string, number> = { likes: 6000, views: 80000, comments: 800, shares: 400 }
+  return Math.round((base[metric] ?? 5000) + (seed % 5000))
 }
 
 /** Resolve the creator's real avatar URL from the social platform (unavatar 302s to the image). */
