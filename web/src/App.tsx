@@ -8,10 +8,12 @@ import { Studio } from './screens/Studio.tsx'
 import { DealDetail } from './screens/DealDetail.tsx'
 import { Browse } from './screens/Browse.tsx'
 import { Console } from './screens/Console.tsx'
+import { SocialVerify } from './screens/SocialVerify.tsx'
+import { Leaderboard } from './screens/Leaderboard.tsx'
 
 type Phase = 'login' | 'connecting' | 'airdrop' | 'app'
 type Role = 'brand' | 'creator'
-export type Screen = { name: 'home' | 'browse' | 'studio' | 'deal' | 'console'; id?: string }
+export type Screen = { name: 'home' | 'browse' | 'studio' | 'deal' | 'console' | 'verify' | 'leaderboard'; id?: string }
 const trunc = (a: string) => (a.length > 12 ? `${a.slice(0, 4)}…${a.slice(-4)}` : a)
 
 export default function App() {
@@ -46,11 +48,11 @@ export default function App() {
 
   if (phase === 'app' && wallet) {
     const isAdmin = health?.admin === wallet.address
-    const items: { k: Screen['name']; label: string }[] = [
-      { k: 'browse', label: 'Browse Deals' },
-      ...(role === 'brand' ? [{ k: 'studio' as const, label: 'Brand Studio' }] : []),
-      { k: 'home', label: 'My Deals' },
-    ]
+    // role comes ONLY from the authenticated session — there is no role switcher.
+    // Brands see brand things, creators see creator things.
+    const items: { k: Screen['name']; label: string }[] = role === 'brand'
+      ? [{ k: 'studio', label: 'Brand Studio' }, { k: 'home', label: 'My Campaigns' }]
+      : [{ k: 'browse', label: 'Browse Deals' }, { k: 'home', label: 'My Deals' }]
     return (
       <div className="min-h-screen">
         <header className="sticky top-0 z-50 glass border-b border-line">
@@ -74,7 +76,9 @@ export default function App() {
           {screen.name === 'home' && <Dashboard wallet={wallet} role={role} balances={bal} onBalances={setBal} health={health} nav={nav} />}
           {screen.name === 'browse' && <Browse nav={nav} />}
           {screen.name === 'studio' && <Studio wallet={wallet} nav={nav} onDone={refreshBal} />}
-          {screen.name === 'deal' && <DealDetail id={screen.id!} wallet={wallet} role={role} onBalances={refreshBal} />}
+          {screen.name === 'deal' && <DealDetail id={screen.id!} wallet={wallet} role={role} onBalances={refreshBal} nav={nav} />}
+          {screen.name === 'verify' && <SocialVerify nav={nav} />}
+          {screen.name === 'leaderboard' && <Leaderboard />}
           {screen.name === 'console' && <Console />}
         </main>
       </div>

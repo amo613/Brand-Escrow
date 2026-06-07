@@ -1,17 +1,22 @@
+/* Deal detail — HERO screen: header (brand↔creator), apply/accept/submit actions, post preview,
+ * milestone timeline (TimelockRing), trust panel (agent log + guardrails + x402). Ported from dealDetail.jsx. */
 import { useEffect, useState } from 'react'
-import { api, LORA } from '../lib/api.ts'
+import { api } from '../lib/api.ts'
 import { acceptOnChain } from '../lib/escrow.ts'
 import { verifySocial } from '../lib/social.ts'
-import { Card, Button, Pill, TxLink } from '../components/ui.tsx'
+import { Card, Button, Pill, TxLink, Icon, Avatar, Platform, ProgressBar, TimelockRing, C } from '../components/ui.tsx'
+import { fmtUSDC, fmtMetric } from '../lib/format.ts'
 import type { Wallet } from '../lib/web3auth.ts'
+import type { Screen } from '../App.tsx'
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 const PLAT_LABEL: Record<string, string> = { x: 'X', youtube: 'YouTube', tiktok: 'TikTok' }
+const METRIC_LABEL: Record<string, string> = { posted: 'Delivery', likes: 'Likes', views: 'Views', comments: 'Comments', shares: 'Shares', followers: 'Followers' }
+const WINDOW = Number(import.meta.env.VITE_CHALLENGE_WINDOW ?? '15')
+const pct = (cur: number, t: number) => Math.min(100, Math.max(0, (cur / (t || 1)) * 100))
+const msColor = (s: string) => (s === 'RELEASED' ? C.mint : s === 'REACHED_PENDING' ? C.amber : C.txt2)
 
-const fmt = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n))
-const statusColor: Record<string, string> = { PENDING: 'muted', REACHED_PENDING: 'amber', RELEASED: 'mint', REFUNDED: 'muted', FUNDED: 'chain', ACCEPTED: 'txt2', TRACKING: 'amber', PARTIALLY_RELEASED: 'mint', DISPUTED: 'coral' }
-
-export function DealDetail({ id, wallet, role, onBalances }: { id: string; wallet: Wallet; role: 'brand' | 'creator'; onBalances: () => void }) {
+export function DealDetail({ id, wallet, role, onBalances, nav }: { id: string; wallet: Wallet; role: 'brand' | 'creator'; onBalances: () => void; nav: (n: Screen['name'], id?: string) => void }) {
   const [d, setD] = useState<any>(null)
   const [postUrl, setPostUrl] = useState('')
   const [handle, setHandle] = useState('')
@@ -35,114 +40,181 @@ export function DealDetail({ id, wallet, role, onBalances }: { id: string; walle
   const isBoundCreator = d.creator === wallet.address
   const applied = (d.applicants ?? []).some((a: any) => a.address === wallet.address)
   const canApply = role === 'creator' && !isBrand && !d.creator && !applied
+  const total = d.milestones.reduce((a: number, m: any) => a + m.amountUsdc, 0)
+  const released = d.milestones.filter((m: any) => m.status === 'RELEASED').reduce((a: number, m: any) => a + m.amountUsdc, 0)
+  const log: { t: string; text: string; kind: string }[] = d.agentLog ?? []
+  // last observed value for a metric, parsed from the agent log ("… metric=NUMBER …")
+  const lastObserved = (metric: string) => { for (let i = log.length - 1; i >= 0; i--) { const m = log[i].text.match(new RegExp(metric + '=(\\d+)')); if (m) return Number(m[1]) } return 0 }
 
   return (
-    <div className="max-w-[1280px] mx-auto px-5 py-7 grid lg:grid-cols-[1.4fr_1fr] gap-5 items-start">
-      <div className="flex flex-col gap-5">
-        <Card className="p-5">
-          <div className="flex items-center gap-2 mb-2"><Pill text={d.status} color={statusColor[d.status] ?? 'txt2'} /><span className="num text-[11.5px] text-txt2">{d.platform}</span></div>
-          <h1 className="font-display text-[24px] font-semibold tracking-tight">{d.title}</h1>
-          <p className="text-[13.5px] text-txt2 mt-1.5">{d.brief}</p>
-          <div className="num text-[11.5px] text-txt2 mt-3 flex flex-wrap gap-x-3 gap-y-1">
-            <span>brand {d.brand.slice(0, 6)}…</span>{d.creator && <span>→ creator {d.creator.slice(0, 6)}…</span>}
-            {d.tx.fund && <TxLink tx={d.tx.fund} label="funded" lora={LORA} />}
+    <div className="max-w-[1320px] mx-auto px-5 py-7">
+      <button onClick={() => nav(role === 'brand' ? 'home' : 'browse')} className="flex items-center gap-1.5 text-[13px] text-txt2 hover:text-txt mb-5 transition-colors"><Icon name="arrowL" size={15} /> Back to deals</button>
+
+      {/* header */}
+      <Card className="p-5 mb-5 anim-rise">
+        <div className="flex items-start justify-between gap-5 flex-wrap">
+          <div className="flex-1 min-w-[280px]">
+            <div className="flex items-center gap-3 mb-3">
+              <Avatar size={38} glyph="◆" hue={C.mint} />
+              <Icon name="arrow" size={16} c={C.muted} />
+              <Avatar size={38} name={d.creatorHandle || d.creator || '—'} hue={C.agent} ring />
+              <Pill status={d.status} />
+            </div>
+            <h1 className="font-display text-[26px] font-semibold tracking-tight leading-tight text-balance">{d.title}</h1>
+            <div className="flex items-center gap-3 mt-2 text-[12.5px] num text-txt2 flex-wrap">
+              <span className="text-txt">brand</span><span className="text-muted">{short(d.brand)}</span><span className="text-muted">→</span>
+              {d.creator ? <><span className="text-txt">{d.creatorHandle || 'creator'}</span><span className="text-muted">{short(d.creator)}</span></> : <span className="text-muted">no creator bound</span>}
+              <span className="text-muted">·</span><Platform p={d.platform} c={C.txt2} />
+            </div>
           </div>
-          {/* ── creator verifies @handle (OAuth) then applies ── */}
-          {canApply && (
-            <div className="mt-4 p-3 rounded-ctl hair bg-white/[0.02]">
-              {verified ? (
+          <div className="flex gap-6">
+            <div className="text-right"><div className="text-[11.5px] uppercase tracking-wide text-txt2">Total escrowed</div><div className="num text-[28px] font-semibold text-txt leading-tight mt-1">{fmtUSDC(total, false)}</div><div className="num text-[11.5px] text-mint mt-0.5">{fmtUSDC(released, false)} released</div></div>
+            {d.tx?.fund && <div className="text-right"><div className="text-[11.5px] uppercase tracking-wide text-txt2">Funding</div><div className="mt-2"><TxLink tx={d.tx.fund} prefix="funded" /></div></div>}
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid lg:grid-cols-[1.35fr_1fr] gap-5 items-start">
+        {/* LEFT */}
+        <div className="flex flex-col gap-5">
+          {/* action card: apply / accept / submit */}
+          {(canApply || (role === 'creator' && !isBrand && applied && !isBoundCreator) || (isBrand && !d.creator) || (isBoundCreator && !d.postUrl)) && (
+            <Card className="p-5" glow="agent">
+              {canApply && (verified ? (
                 <>
                   <div className="text-[12.5px] text-txt mb-2.5">Verified as <span className="num text-mint">{verified.handle}</span> on {PLAT_LABEL[d.platform] ?? d.platform} ✓</div>
                   <Button onClick={applyToDeal} disabled={busy === 'apply'}>{busy === 'apply' ? '…' : 'Apply to deliver this deal'}</Button>
                 </>
               ) : (
                 <>
-                  <div className="text-[12.5px] text-txt">Verify your {PLAT_LABEL[d.platform] ?? d.platform} account to apply</div>
-                  <div className="text-[11.5px] text-txt2 mt-0.5 mb-2.5">Proves the @handle of the post we'll track — OAuth, we never see your password.</div>
-                  <Button variant="agent" onClick={() => verify(d.platform)} disabled={busy === 'verify'}>{busy === 'verify' ? 'Opening…' : `🔗 Verify @handle on ${PLAT_LABEL[d.platform] ?? d.platform}`}</Button>
-                  <div className="flex gap-2 mt-2.5">
-                    <input value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="or apply with @handle manually" className="flex-1 px-3 py-2 rounded-ctl hair bg-ink/60 text-[12px] text-txt num" />
-                    <Button variant="ghost" onClick={applyToDeal} disabled={busy === 'apply' || !handle.trim()}>{busy === 'apply' ? '…' : 'Apply'}</Button>
-                  </div>
+                  <div className="text-[14px] font-medium text-txt">Verify your {PLAT_LABEL[d.platform] ?? d.platform} account to apply</div>
+                  <div className="text-[12px] text-txt2 mt-0.5 mb-3">Proves the @handle of the post we'll track — OAuth, we never see your password.</div>
+                  <Button variant="agent" icon="user" onClick={() => verify(d.platform)} disabled={busy === 'verify'}>{busy === 'verify' ? 'Opening…' : `Verify @handle on ${PLAT_LABEL[d.platform] ?? d.platform}`}</Button>
+                  <div className="flex gap-2 mt-3"><input value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="or apply with @handle manually" className="flex-1 px-3 py-2 rounded-ctl hair bg-ink/60 text-[12px] text-txt num" /><Button variant="ghost" onClick={applyToDeal} disabled={busy === 'apply' || !handle.trim()}>{busy === 'apply' ? '…' : 'Apply'}</Button></div>
+                </>
+              ))}
+              {role === 'creator' && !isBrand && applied && !isBoundCreator && <div className="text-[13px] text-amber flex items-center gap-2"><Icon name="clock" size={15} c={C.amber} /> Applied — waiting for the brand to accept you.</div>}
+              {isBrand && !d.creator && (
+                <>
+                  <div className="text-[12px] uppercase tracking-wider text-txt2 mb-3">Applicants {(d.applicants ?? []).length > 0 && `(${d.applicants.length})`}</div>
+                  {(d.applicants ?? []).length === 0 ? <div className="text-[12.5px] text-muted">No applicants yet — a creator needs to apply.</div> : (
+                    <div className="flex flex-col gap-2.5">{d.applicants.map((a: any) => (
+                      <div key={a.address} className="flex items-center gap-3"><Avatar size={34} name={a.handle || a.address} hue={C.agent} />
+                        <div className="flex-1 min-w-0"><div className="text-[13px] text-txt flex items-center gap-1.5">{a.handle || 'creator'} {a.verified && <Icon name="check" size={12} c={C.mint} sw={3} />}</div><div className="num text-[11px] text-txt2 truncate">{short(a.address)}</div></div>
+                        <Button size="sm" variant="primary" icon="check" onClick={() => accept(a.address)} disabled={busy.startsWith('accept')}>{busy === 'accept-' + a.address ? 'Binding…' : 'Accept'}</Button>
+                      </div>
+                    ))}</div>
+                  )}
                 </>
               )}
-            </div>
-          )}
-          {role === 'creator' && !isBrand && applied && !isBoundCreator && <div className="mt-4 text-[12.5px] text-amber">✓ Applied — waiting for the brand to accept you.</div>}
-          {role === 'creator' && !isBrand && d.creator && !isBoundCreator && <div className="mt-4 text-[12.5px] text-txt2">This deal already has a bound creator.</div>}
-
-          {/* ── brand reviews applicants + accepts (binds creator on-chain) ── */}
-          {isBrand && !d.creator && (
-            <div className="mt-4 p-3 rounded-ctl hair bg-white/[0.02]">
-              <div className="text-[12.5px] text-txt mb-2">Applicants {(d.applicants ?? []).length > 0 && `(${d.applicants.length})`}</div>
-              {(d.applicants ?? []).length === 0 ? <div className="text-[12px] text-muted">No applicants yet — a creator needs to apply.</div> : (
-                <div className="flex flex-col gap-2">
-                  {d.applicants.map((a: any) => (
-                    <div key={a.address} className="flex items-center gap-2">
-                      <div className="flex-1 min-w-0"><div className="text-[12.5px] text-txt">{a.handle || 'creator'}</div><div className="num text-[11px] text-txt2 truncate">{short(a.address)}</div></div>
-                      <Button onClick={() => accept(a.address)} disabled={busy.startsWith('accept')}>{busy === 'accept-' + a.address ? 'Binding…' : 'Accept'}</Button>
-                    </div>
-                  ))}
-                </div>
+              {isBoundCreator && !d.postUrl && (
+                <>
+                  <div className="text-[14px] font-medium text-txt mb-2">Submit your post link</div>
+                  <div className="flex gap-2"><input value={postUrl} onChange={(e) => setPostUrl(e.target.value)} placeholder="https://x.com/you/status/…" className="flex-1 px-3 py-2 rounded-ctl hair bg-ink/60 text-[12.5px] text-txt num" /><Button onClick={submit} disabled={busy === 'submit' || !postUrl}>{busy === 'submit' ? '…' : 'Submit'}</Button></div>
+                </>
               )}
+            </Card>
+          )}
+
+          {/* post preview */}
+          <Card className={d.postUrl ? 'overflow-hidden' : 'p-6 border-dashed'}>
+            {d.postUrl ? (
+              <>
+                <div className="p-4 flex items-center gap-3 border-b border-line">
+                  <Avatar size={40} name={d.creatorHandle || d.creator || '—'} hue={C.agent} ring />
+                  <div className="leading-tight flex-1 min-w-0"><div className="text-[14px] font-medium text-txt flex items-center gap-1.5">{d.creatorHandle || short(d.creator)} {d.creator && <Icon name="check" size={12} c={C.mint} sw={3} />}</div><div className="num text-[11.5px] text-txt2"><Platform p={d.platform} c={C.txt2} /> · tracked post</div></div>
+                  <a href={d.postUrl} target="_blank" rel="noreferrer" className="num text-[12px] text-chain hover:underline inline-flex items-center gap-1">open post <Icon name="ext" size={11} c={C.chain} sw={2} /></a>
+                </div>
+                <div className="p-4"><div className="num text-[12px] text-chain truncate">↳ {d.postUrl}</div></div>
+              </>
+            ) : (
+              <div className="flex items-center gap-3 text-txt2"><div className="grid place-items-center w-10 h-10 rounded-ctl bg-white/[0.03]"><Icon name="studio" size={18} c={C.muted} /></div><div><div className="text-[14px] text-txt">No post submitted yet</div><div className="text-[12.5px] text-muted">Tracking starts when the bound creator submits the link.</div></div></div>
+            )}
+          </Card>
+
+          {/* milestone timeline */}
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-[15px] font-medium text-txt flex items-center gap-2"><Icon name="pulse" size={16} c={C.amber} /> Milestone timeline</h2>
+              <span className="text-[12px] num text-txt2">{d.milestones.filter((m: any) => m.status === 'RELEASED').length}/{d.milestones.length} released</span>
             </div>
-          )}
-          {d.creator && <div className="num text-[11.5px] text-mint mt-3">✓ creator bound: {short(d.creator)}{d.tx.accept && <> · <TxLink tx={d.tx.accept} label="accept" lora={LORA} /></>}</div>}
-
-          {/* ── bound creator submits the post link ── */}
-          {isBoundCreator && !d.postUrl && (
-            <div className="flex gap-2 mt-4"><input value={postUrl} onChange={(e) => setPostUrl(e.target.value)} placeholder="Paste your post link…" className="flex-1 px-3 py-2 rounded-ctl hair bg-ink/60 text-[12.5px] text-txt num" /><Button onClick={submit} disabled={busy === 'submit' || !postUrl}>{busy === 'submit' ? '…' : 'Submit'}</Button></div>
-          )}
-          {d.postUrl && <div className="num text-[11.5px] text-chain mt-3 truncate">↳ post: {d.postUrl}</div>}
-        </Card>
-
-        <Card className="p-5">
-          <h2 className="text-[15px] font-medium text-txt mb-4">Milestones</h2>
-          <div className="flex flex-col gap-4">
-            {d.milestones.map((m: any) => (
-              <div key={m.index} className="flex items-start gap-3">
-                <div className="grid place-items-center w-8 h-8 rounded-full shrink-0 num text-[12px]" style={{ background: '#14171f', color: '#9AA4B2' }}>{m.index + 1}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="text-[14px] text-txt">{m.metric === 'posted' ? 'Delivery — post the video' : `${m.metric} ≥ ${fmt(m.threshold)}`}</span>
-                    <span className="num text-[14px] font-semibold" style={{ color: m.status === 'RELEASED' ? '#00E5A8' : '#EDF0F4' }}>${m.amountUsdc.toFixed(2)}</span>
+            {d.milestones.map((m: any, i: number) => {
+              const col = msColor(m.status); const last = i === d.milestones.length - 1
+              const cur = m.metric === 'posted' ? (m.status !== 'PENDING' ? 1 : 0) : lastObserved(m.metric)
+              const p = pct(cur, m.threshold)
+              const endsAt = (m.approvedAt ? m.approvedAt + WINDOW : 0) * 1000
+              return (
+                <div key={i} className="flex gap-4 relative">
+                  <div className="flex flex-col items-center shrink-0">
+                    <div className="grid place-items-center w-9 h-9 rounded-full shrink-0 z-10 transition-all" style={{ background: col + '1c', boxShadow: m.status === 'REACHED_PENDING' ? `0 0 0 1px ${col}, 0 0 18px -2px ${col}` : `inset 0 0 0 1px ${col}55`, animation: m.status === 'REACHED_PENDING' ? 'pulseGlow 1.8s ease-in-out infinite' : 'none' }}>
+                      {m.status === 'RELEASED' ? <Icon name="check" size={16} c={col} sw={2.6} /> : <span className="num text-[12px] font-semibold" style={{ color: col }}>{i + 1}</span>}
+                    </div>
+                    {!last && <div className="w-px flex-1 my-1" style={{ background: m.status === 'RELEASED' ? C.mint + '66' : C.line }} />}
                   </div>
-                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    <Pill text={m.status} color={statusColor[m.status] ?? 'txt2'} />
-                    {d.postUrl && m.status === 'PENDING' && <Button variant="agent" onClick={() => runAgent(m.index)} disabled={!!busy}>{busy === 'agent' ? 'Agent working…' : 'Run AI agent (x402)'}</Button>}
-                    {m.status === 'REACHED_PENDING' && <Button onClick={() => release(m.index)} disabled={!!busy}>{busy === 'release' ? 'Releasing…' : 'Release tranche'}</Button>}
-                    {m.releaseTx && <TxLink tx={m.releaseTx} label="release" lora={LORA} />}
+                  <div className="flex-1 pb-6 min-w-0">
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap"><span className="text-[14.5px] font-medium text-txt">{m.metric === 'posted' ? 'Delivery — post the video' : `${METRIC_LABEL[m.metric]} ≥ ${fmtMetric(m.threshold)}`}</span><Pill status={m.status} size="sm" /></div>
+                        {m.metric !== 'posted' && cur > 0 && <div className="num text-[12px] text-txt2 mt-1"><span style={{ color: col }}>{fmtMetric(cur)}</span> / {fmtMetric(m.threshold)} {(METRIC_LABEL[m.metric] || '').toLowerCase()} <span className="text-muted">({Math.round(p)}%)</span></div>}
+                      </div>
+                      <div className="num text-[16px] font-semibold shrink-0" style={{ color: m.status === 'RELEASED' ? C.mint : C.txt }}>{fmtUSDC(m.amountUsdc, false)}</div>
+                    </div>
+                    {m.metric !== 'posted' && m.status === 'PENDING' && cur > 0 && <div className="mt-2.5"><ProgressBar value={p} color="amber" height={7} /></div>}
+                    {m.status === 'PENDING' && d.postUrl && (
+                      <div className="mt-2.5 flex items-center gap-2 flex-wrap"><span className="text-[12px] text-txt2">Tracked automatically by the agent.</span><Button size="sm" variant="agent" onClick={() => runAgent(i)} disabled={!!busy}>{busy === 'agent' ? 'Agent working…' : 'Run agent now'}</Button></div>
+                    )}
+                    {m.status === 'REACHED_PENDING' && (
+                      <div className="mt-3 flex items-center gap-4 rounded-ctl p-3 hair" style={{ background: C.amber + '0d' }}>
+                        {endsAt > Date.now() ? <TimelockRing endsAt={endsAt} total={WINDOW} size={58} /> : <div className="grid place-items-center w-[58px] h-[58px]"><Icon name="check" size={24} c={C.mint} sw={2.4} /></div>}
+                        <div className="flex-1 min-w-0 leading-snug"><div className="text-[13px] text-txt flex items-center gap-1.5"><Icon name="spark" size={13} c={C.agent} /> AI verified — auto-releasing</div><div className="text-[12px] text-txt2 mt-1">The settlement worker releases after the window.</div></div>
+                        <Button size="sm" variant="ghost" onClick={() => release(i)} disabled={!!busy}>{busy === 'release' ? '…' : 'Release now'}</Button>
+                      </div>
+                    )}
+                    {m.status === 'RELEASED' && <div className="num text-[12px] text-mint mt-2 flex items-center gap-2 flex-wrap"><Icon name="coin" size={13} c={C.mint} /> Paid {fmtUSDC(m.amountUsdc, false)} USDC {m.releaseTx && <><span className="text-muted">·</span><TxLink tx={m.releaseTx} prefix="release" /></>}</div>}
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+              )
+            })}
+          </Card>
 
-      <div className="flex flex-col gap-4 lg:sticky lg:top-[76px]">
-        <Card className="p-4" glow="agent">
-          <div className="flex items-center gap-2.5 mb-3"><div className="grid place-items-center w-8 h-8 rounded-ctl" style={{ background: '#7C5CFF1c' }}>✦</div><div className="leading-tight flex-1"><div className="text-[14px] font-medium text-txt">Autonomous agent</div><div className="text-[11.5px] text-txt2">judges proof · bounded by contract</div></div><Pill text="online" color="agent" pulse /></div>
-          <div className="rounded-card overflow-hidden hair" style={{ background: '#0B0E13' }}>
-            <div className="num text-[12px] leading-[1.8] px-3 py-2.5 max-h-[230px] overflow-y-auto">
-              {d.agentLog.length === 0 ? <div className="text-muted">no activity yet — submit a post + run the agent</div> : d.agentLog.map((l: any, i: number) => (
-                <div key={i} className="flex gap-2"><span className="text-muted shrink-0">{l.t}</span><span style={{ color: { chain: '#34D2FF', verdict: '#7C5CFF', release: '#00E5A8', danger: '#FF5A6E' }[l.kind] ?? '#9AA4B2' }}>{l.text}</span></div>
+          {/* brief */}
+          <Card className="p-5"><div className="text-[12px] uppercase tracking-wider text-txt2 mb-2">The brief</div><p className="text-[13.5px] text-txt2 leading-relaxed text-pretty">{d.brief}</p></Card>
+        </div>
+
+        {/* RIGHT — trust panel */}
+        <div className="lg:sticky lg:top-[76px] flex flex-col gap-4">
+          <Card className="p-4" glow="agent">
+            <div className="flex items-center gap-2.5"><div className="grid place-items-center w-9 h-9 rounded-ctl" style={{ background: C.agent + '1c' }}><Icon name="spark" size={18} c={C.agent} /></div><div className="leading-tight flex-1"><div className="text-[14px] font-medium text-txt">Autonomous agent</div><div className="text-[11.5px] text-txt2">judges proof · bounded by contract</div></div><Pill text="online" color="agent" size="sm" pulse /></div>
+          </Card>
+
+          <Card className="p-0 overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-line flex items-center gap-2"><span className="num text-[11px] text-muted">agent.log</span></div>
+            <div className="num text-[12px] leading-[1.8] px-3 py-2.5 max-h-[234px] overflow-y-auto" style={{ background: '#0B0E13' }}>
+              {log.length === 0 ? <div className="text-muted">no activity yet — agent tracks the post automatically</div> : log.map((l, i) => (
+                <div key={i} className="flex gap-2"><span className="text-muted shrink-0">{l.t}</span><span style={{ color: ({ chain: C.chain, verdict: C.agent, release: C.mint, danger: C.coral } as any)[l.kind] ?? C.txt2 }}>{l.text}</span></div>
               ))}
             </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-[12px] uppercase tracking-wider text-txt2 mb-3">🔒 Live guardrails</div>
-          {[['Recipient bound', d.creator ? d.creator.slice(0, 10) + '…' : 'on accept'], ['Amount bound', 'per milestone'], ['Metric re-checked on-chain', '≥ threshold'], ['Oracle-only attestation', 'PactPay agent'], ['Refund on deadline', 'to brand']].map(([t, v], i) => (
-            <div key={i} className="flex items-start gap-2.5 mb-2"><span className="text-mint mt-0.5">✓</span><div><div className="text-[12.5px] text-txt">{t}</div><div className="num text-[11.5px] text-txt2">{v}</div></div></div>
-          ))}
-        </Card>
-        {(d.tx.x402 || d.tx.verdict) && (
-          <Card className="p-4">
-            <div className="text-[12px] uppercase tracking-wider text-txt2 mb-2">x402 + verdict receipts</div>
-            <div className="flex flex-col gap-1.5">{d.tx.x402 && <div className="text-[12px]"><span className="num text-chain">0.01 USDC</span> proof · <TxLink tx={d.tx.x402} lora={LORA} /></div>}{d.tx.verdict && <div className="text-[12px]">verdict · <TxLink tx={d.tx.verdict} lora={LORA} /></div>}</div>
           </Card>
-        )}
+
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-3"><Icon name="lock" size={15} c={C.mint} /><span className="text-[12px] uppercase tracking-wider text-txt2">Live guardrails</span></div>
+            <div className="flex flex-col gap-2">
+              {([['Recipient locked', d.creator ? short(d.creator) : 'on accept', !!d.creator], ['Amount locked', 'per milestone', true], ['Metric re-checked on-chain', '≥ threshold', true], ['Oracle-only attestation', 'PactPay oracle', true], ['Challenge window', `${WINDOW}s timelock`, true], ['Refund to brand', 'after deadline', true]] as [string, string, boolean][]).map(([t, v, ok], i) => (
+                <div key={i} className="flex items-start gap-2.5"><Icon name={ok ? 'check' : 'clock'} size={14} c={ok ? C.mint : C.amber} sw={2.6} className="mt-0.5 shrink-0" /><div className="flex-1 min-w-0"><div className="text-[12.5px] text-txt">{t}</div><div className="num text-[11.5px] text-txt2 truncate">{v}</div></div></div>
+              ))}
+            </div>
+          </Card>
+
+          {(d.tx?.x402 || d.tx?.verdict) && (
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-3"><Icon name="bolt" size={15} c={C.chain} /><span className="text-[12px] uppercase tracking-wider text-txt2">x402 proof receipts</span></div>
+              <div className="flex flex-col gap-1.5">
+                {d.tx.x402 && <div className="flex items-center gap-2 text-[12px]"><span className="num text-chain">{fmtUSDC(0.01, false)}</span><span className="text-muted">proof</span><span className="ml-auto"><TxLink tx={d.tx.x402} /></span></div>}
+                {d.tx.verdict && <div className="flex items-center gap-2 text-[12px]"><span className="num text-agent">verdict</span><span className="text-muted">on-chain attest</span><span className="ml-auto"><TxLink tx={d.tx.verdict} /></span></div>}
+              </div>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   )

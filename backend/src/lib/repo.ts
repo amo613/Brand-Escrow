@@ -66,6 +66,7 @@ async function toView(d: any): Promise<any> {
       status: m.status, releaseTx: m.releaseTxId ?? undefined, approvedAt: m.approvedAt ? Math.floor(new Date(m.approvedAt).getTime() / 1000) : undefined,
     })),
     applicants, agentLog: meta.agentLog, tx: meta.tx, createdAt: new Date(d.createdAt).getTime(),
+    deadline: d.deadline ? new Date(d.deadline).getTime() : undefined,
   }
 }
 const DEAL_INCLUDE = { brand: true, creator: { include: { socials: true } }, milestones: true, applications: { include: { creator: { include: { socials: true } } } } } as const
