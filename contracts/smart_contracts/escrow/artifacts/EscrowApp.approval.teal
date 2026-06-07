@@ -1,0 +1,1902 @@
+#pragma version 11
+#pragma typetrack false
+
+// @algorandfoundation/algorand-typescript/arc4/index.d.ts::Contract.approvalProgram() -> uint64:
+main:
+    intcblock 8 0 1 4 256
+    bytecblock "usdcAsa" "d" "m" "admin" "challengeWindow" "agentOracle" "minConfidence"
+    // smart_contracts/escrow/contract.algo.ts:51
+    // export class EscrowApp extends Contract {
+    txn OnCompletion
+    !
+    assert // OnCompletion must be NoOp
+    txn ApplicationID
+    bz main_create_NoOp@12
+    pushbytess 0xbec76d87 0xf1f2224f 0x59a58132 0x9df512c0 0x6767b90b 0x40f0b21d 0x900a30dd 0x4724ece5 // method "bootstrap()void", method "createDeal(axfer,pay,uint64,uint64,uint8[],uint64[],uint64[])void", method "acceptApplication(uint64,address)void", method "submitMilestoneVerdict(uint64,uint64,bool,uint64,uint64)void", method "releaseMilestone(uint64,uint64)void", method "dispute(uint64,uint64)void", method "resolveDispute(uint64,uint64,bool)void", method "refund(uint64)void"
+    txna ApplicationArgs 0
+    match bootstrap createDeal acceptApplication submitMilestoneVerdict releaseMilestone dispute resolveDispute refund
+    err
+
+main_create_NoOp@12:
+    // smart_contracts/escrow/contract.algo.ts:51
+    // export class EscrowApp extends Contract {
+    pushbytes 0xb81e05da // method "createApplication(address,uint64,uint64,uint64)void"
+    txna ApplicationArgs 0
+    match createApplication
+    err
+
+
+// smart_contracts/escrow/contract.algo.ts::EscrowApp.createApplication[routing]() -> void:
+createApplication:
+    // smart_contracts/escrow/contract.algo.ts:65
+    // @abimethod({ onCreate: 'require' })
+    txna ApplicationArgs 1
+    dup
+    len
+    pushint 32 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    txna ApplicationArgs 2
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 3
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 4
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/escrow/contract.algo.ts:52
+    // admin = GlobalState<Account>()
+    bytec_3 // "admin"
+    // smart_contracts/escrow/contract.algo.ts:67
+    // this.admin.value = Txn.sender
+    txn Sender
+    app_global_put
+    // smart_contracts/escrow/contract.algo.ts:53
+    // agentOracle = GlobalState<Account>()
+    bytec 5 // "agentOracle"
+    // smart_contracts/escrow/contract.algo.ts:68
+    // this.agentOracle.value = agentOracle
+    uncover 4
+    app_global_put
+    // smart_contracts/escrow/contract.algo.ts:54
+    // usdcAsa = GlobalState<uint64>()
+    bytec_0 // "usdcAsa"
+    // smart_contracts/escrow/contract.algo.ts:69
+    // this.usdcAsa.value = usdcAsa
+    uncover 3
+    app_global_put
+    // smart_contracts/escrow/contract.algo.ts:55
+    // challengeWindow = GlobalState<uint64>()
+    bytec 4 // "challengeWindow"
+    // smart_contracts/escrow/contract.algo.ts:70
+    // this.challengeWindow.value = challengeWindow
+    uncover 2
+    app_global_put
+    // smart_contracts/escrow/contract.algo.ts:56
+    // minConfidence = GlobalState<uint64>()
+    bytec 6 // "minConfidence"
+    // smart_contracts/escrow/contract.algo.ts:71
+    // this.minConfidence.value = minConfidence
+    swap
+    app_global_put
+    // smart_contracts/escrow/contract.algo.ts:65
+    // @abimethod({ onCreate: 'require' })
+    intc_2 // 1
+    return
+
+
+// smart_contracts/escrow/contract.algo.ts::EscrowApp.bootstrap[routing]() -> void:
+bootstrap:
+    // smart_contracts/escrow/contract.algo.ts:76
+    // assert(Txn.sender === this.admin.value, 'admin only')
+    txn Sender
+    intc_1 // 0
+    // smart_contracts/escrow/contract.algo.ts:52
+    // admin = GlobalState<Account>()
+    bytec_3 // "admin"
+    // smart_contracts/escrow/contract.algo.ts:76
+    // assert(Txn.sender === this.admin.value, 'admin only')
+    app_global_get_ex
+    assert // check GlobalState exists
+    ==
+    assert // admin only
+    // smart_contracts/escrow/contract.algo.ts:77-84
+    // itxn
+    //   .assetTransfer({
+    //     xferAsset: this.usdcAsa.value,
+    //     assetReceiver: Global.currentApplicationAddress,
+    //     assetAmount: 0,
+    //     fee: 0,
+    //   })
+    //   .submit()
+    itxn_begin
+    // smart_contracts/escrow/contract.algo.ts:79
+    // xferAsset: this.usdcAsa.value,
+    intc_1 // 0
+    // smart_contracts/escrow/contract.algo.ts:54
+    // usdcAsa = GlobalState<uint64>()
+    bytec_0 // "usdcAsa"
+    // smart_contracts/escrow/contract.algo.ts:79
+    // xferAsset: this.usdcAsa.value,
+    app_global_get_ex
+    assert // check GlobalState exists
+    // smart_contracts/escrow/contract.algo.ts:80
+    // assetReceiver: Global.currentApplicationAddress,
+    global CurrentApplicationAddress
+    // smart_contracts/escrow/contract.algo.ts:81
+    // assetAmount: 0,
+    intc_1 // 0
+    itxn_field AssetAmount
+    itxn_field AssetReceiver
+    itxn_field XferAsset
+    // smart_contracts/escrow/contract.algo.ts:77-83
+    // itxn
+    //   .assetTransfer({
+    //     xferAsset: this.usdcAsa.value,
+    //     assetReceiver: Global.currentApplicationAddress,
+    //     assetAmount: 0,
+    //     fee: 0,
+    //   })
+    intc_3 // 4
+    itxn_field TypeEnum
+    // smart_contracts/escrow/contract.algo.ts:82
+    // fee: 0,
+    intc_1 // 0
+    itxn_field Fee
+    // smart_contracts/escrow/contract.algo.ts:77-84
+    // itxn
+    //   .assetTransfer({
+    //     xferAsset: this.usdcAsa.value,
+    //     assetReceiver: Global.currentApplicationAddress,
+    //     assetAmount: 0,
+    //     fee: 0,
+    //   })
+    //   .submit()
+    itxn_submit
+    // smart_contracts/escrow/contract.algo.ts:75
+    // bootstrap(): void {
+    intc_2 // 1
+    return
+
+
+// smart_contracts/escrow/contract.algo.ts::EscrowApp.createDeal[routing]() -> void:
+createDeal:
+    pushbytes ""
+    dupn 2
+    // smart_contracts/escrow/contract.algo.ts:88-96
+    // createDeal(
+    //   axfer: gtxn.AssetTransferTxn,
+    //   boxPay: gtxn.PaymentTxn,
+    //   dealId: uint64,
+    //   deadline: uint64,
+    //   metrics: DynamicArray<Uint8>,
+    //   thresholds: DynamicArray<Uint64>,
+    //   amounts: DynamicArray<Uint64>,
+    // ): void {
+    txn GroupIndex
+    pushint 2 // 2
+    -
+    dup
+    gtxns TypeEnum
+    intc_3 // axfer
+    ==
+    assert // transaction type is axfer
+    txn GroupIndex
+    intc_2 // 1
+    -
+    dup
+    gtxns TypeEnum
+    intc_2 // pay
+    ==
+    assert // transaction type is pay
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    dup
+    txna ApplicationArgs 2
+    dup
+    cover 2
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    txna ApplicationArgs 3
+    dup
+    cover 2
+    dup
+    intc_1 // 0
+    extract_uint16 // on error: invalid array length header
+    dup
+    cover 3
+    dup
+    pushint 2 // 2
+    +
+    uncover 2
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    txna ApplicationArgs 4
+    dup
+    cover 3
+    dup
+    intc_1 // 0
+    extract_uint16 // on error: invalid array length header
+    dup
+    cover 4
+    intc_0 // 8
+    *
+    pushint 2 // 2
+    +
+    swap
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint64>
+    txna ApplicationArgs 5
+    dup
+    cover 3
+    dup
+    intc_1 // 0
+    extract_uint16 // on error: invalid array length header
+    dup
+    cover 4
+    intc_0 // 8
+    *
+    pushint 2 // 2
+    +
+    swap
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint64>
+    // smart_contracts/escrow/contract.algo.ts:97
+    // assert(!this.deals(dealId).exists, 'dealId already used')
+    swap
+    itob
+    // smart_contracts/escrow/contract.algo.ts:58
+    // deals = BoxMap<uint64, DealHeader>({ keyPrefix: 'd' })
+    bytec_1 // "d"
+    swap
+    concat
+    dup
+    cover 2
+    // smart_contracts/escrow/contract.algo.ts:97
+    // assert(!this.deals(dealId).exists, 'dealId already used')
+    box_len
+    bury 1
+    !
+    assert // dealId already used
+    // smart_contracts/escrow/contract.algo.ts:99
+    // assert(count > 0 && count <= 8, 'count must be 1..8')
+    bz createDeal_bool_false@4
+    dig 5
+    intc_0 // 8
+    <=
+    bz createDeal_bool_false@4
+    intc_2 // 1
+
+createDeal_bool_merge@5:
+    // smart_contracts/escrow/contract.algo.ts:99
+    // assert(count > 0 && count <= 8, 'count must be 1..8')
+    assert // count must be 1..8
+    // smart_contracts/escrow/contract.algo.ts:100
+    // assert(thresholds.length === count && amounts.length === count, 'array length mismatch')
+    dig 3
+    dig 6
+    ==
+    bz createDeal_bool_false@8
+    dig 1
+    dig 6
+    ==
+    bz createDeal_bool_false@8
+    intc_2 // 1
+
+createDeal_bool_merge@9:
+    // smart_contracts/escrow/contract.algo.ts:100
+    // assert(thresholds.length === count && amounts.length === count, 'array length mismatch')
+    assert // array length mismatch
+    // smart_contracts/escrow/contract.algo.ts:102
+    // let total: uint64 = 0
+    intc_1 // 0
+    bury 12
+    // smart_contracts/escrow/contract.algo.ts:103
+    // for (let i: uint64 = 0; i < count; i = i + 1) {
+    intc_1 // 0
+    bury 14
+
+createDeal_while_top@10:
+    // smart_contracts/escrow/contract.algo.ts:103
+    // for (let i: uint64 = 0; i < count; i = i + 1) {
+    dig 13
+    dig 6
+    <
+    bz createDeal_after_while@12
+    // smart_contracts/escrow/contract.algo.ts:104
+    // const amt = amounts[i].asUint64()
+    dig 2
+    extract 2 0
+    dig 14
+    dup
+    cover 2
+    intc_0 // 8
+    *
+    extract_uint64
+    // smart_contracts/escrow/contract.algo.ts:105
+    // assert(amt > 0, 'amount must be > 0')
+    dup
+    assert // amount must be > 0
+    // smart_contracts/escrow/contract.algo.ts:106
+    // total = total + amt
+    dig 13
+    +
+    bury 13
+    // smart_contracts/escrow/contract.algo.ts:103
+    // for (let i: uint64 = 0; i < count; i = i + 1) {
+    intc_2 // 1
+    +
+    bury 14
+    b createDeal_while_top@10
+
+createDeal_after_while@12:
+    // smart_contracts/escrow/contract.algo.ts:110
+    // assert(axfer.assetReceiver === Global.currentApplicationAddress, 'axfer must pay the app')
+    dig 10
+    dup
+    gtxns AssetReceiver
+    global CurrentApplicationAddress
+    ==
+    assert // axfer must pay the app
+    // smart_contracts/escrow/contract.algo.ts:111
+    // assert(axfer.xferAsset.id === this.usdcAsa.value, 'axfer must be USDC')
+    dup
+    gtxns XferAsset
+    intc_1 // 0
+    // smart_contracts/escrow/contract.algo.ts:54
+    // usdcAsa = GlobalState<uint64>()
+    bytec_0 // "usdcAsa"
+    // smart_contracts/escrow/contract.algo.ts:111
+    // assert(axfer.xferAsset.id === this.usdcAsa.value, 'axfer must be USDC')
+    app_global_get_ex
+    assert // check GlobalState exists
+    ==
+    assert // axfer must be USDC
+    // smart_contracts/escrow/contract.algo.ts:112
+    // assert(axfer.assetAmount === total, 'axfer amount must equal sum of milestone amounts')
+    gtxns AssetAmount
+    dig 12
+    dup
+    cover 2
+    ==
+    assert // axfer amount must equal sum of milestone amounts
+    // smart_contracts/escrow/contract.algo.ts:113
+    // assert(boxPay.receiver === Global.currentApplicationAddress, 'box-rent pay must go to the app')
+    dig 10
+    dup
+    gtxns Receiver
+    global CurrentApplicationAddress
+    ==
+    assert // box-rent pay must go to the app
+    // smart_contracts/escrow/contract.algo.ts:114
+    // assert(boxPay.amount >= BOX_RENT_FLOOR, 'box rent not covered')
+    gtxns Amount
+    pushint 100000 // 100000
+    >=
+    assert // box rent not covered
+    // smart_contracts/escrow/contract.algo.ts:117
+    // brand: new Address(Txn.sender),
+    txn Sender
+    // smart_contracts/escrow/contract.algo.ts:119
+    // total: new Uint64(total),
+    swap
+    itob
+    // smart_contracts/escrow/contract.algo.ts:122
+    // count: new Uint8(count),
+    dig 7
+    itob
+    dup
+    bitlen
+    intc_0 // 8
+    <=
+    assert // overflow
+    extract 7 1
+    // smart_contracts/escrow/contract.algo.ts:116-124
+    // this.deals(dealId).value = new DealHeader({
+    //   brand: new Address(Txn.sender),
+    //   creator: new Address(), // unbound (zero address) until accepted
+    //   total: new Uint64(total),
+    //   deadline: new Uint64(deadline),
+    //   status: new Uint8(0),
+    //   count: new Uint8(count),
+    //   released: new Uint8(0),
+    // })
+    uncover 2
+    // smart_contracts/escrow/contract.algo.ts:118
+    // creator: new Address(), // unbound (zero address) until accepted
+    pushbytes base32(AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA) // addr AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ
+    // smart_contracts/escrow/contract.algo.ts:116-124
+    // this.deals(dealId).value = new DealHeader({
+    //   brand: new Address(Txn.sender),
+    //   creator: new Address(), // unbound (zero address) until accepted
+    //   total: new Uint64(total),
+    //   deadline: new Uint64(deadline),
+    //   status: new Uint8(0),
+    //   count: new Uint8(count),
+    //   released: new Uint8(0),
+    // })
+    concat
+    uncover 2
+    concat
+    dig 9
+    concat
+    // smart_contracts/escrow/contract.algo.ts:121
+    // status: new Uint8(0),
+    pushbytes 0x00
+    // smart_contracts/escrow/contract.algo.ts:116-124
+    // this.deals(dealId).value = new DealHeader({
+    //   brand: new Address(Txn.sender),
+    //   creator: new Address(), // unbound (zero address) until accepted
+    //   total: new Uint64(total),
+    //   deadline: new Uint64(deadline),
+    //   status: new Uint8(0),
+    //   count: new Uint8(count),
+    //   released: new Uint8(0),
+    // })
+    concat
+    swap
+    concat
+    // smart_contracts/escrow/contract.algo.ts:123
+    // released: new Uint8(0),
+    pushbytes 0x00
+    // smart_contracts/escrow/contract.algo.ts:116-124
+    // this.deals(dealId).value = new DealHeader({
+    //   brand: new Address(Txn.sender),
+    //   creator: new Address(), // unbound (zero address) until accepted
+    //   total: new Uint64(total),
+    //   deadline: new Uint64(deadline),
+    //   status: new Uint8(0),
+    //   count: new Uint8(count),
+    //   released: new Uint8(0),
+    // })
+    concat
+    dig 1
+    swap
+    box_put
+    // smart_contracts/escrow/contract.algo.ts:126
+    // for (let i: uint64 = 0; i < count; i = i + 1) {
+    intc_1 // 0
+    bury 13
+
+createDeal_while_top@13:
+    // smart_contracts/escrow/contract.algo.ts:126
+    // for (let i: uint64 = 0; i < count; i = i + 1) {
+    dig 12
+    dig 6
+    <
+    bz createDeal_after_while@15
+    // smart_contracts/escrow/contract.algo.ts:128
+    // metric: new Uint8(metrics[i].asUint64()),
+    dig 6
+    extract 2 0
+    dig 13
+    dup
+    cover 2
+    getbyte
+    itob
+    dup
+    bitlen
+    intc_0 // 8
+    <=
+    assert // overflow
+    extract 7 1
+    // smart_contracts/escrow/contract.algo.ts:129
+    // threshold: new Uint64(thresholds[i].asUint64()),
+    dig 6
+    extract 2 0
+    dig 2
+    intc_0 // 8
+    *
+    swap
+    dig 1
+    intc_0 // 8
+    extract3 // on error: index access is out of bounds
+    // smart_contracts/escrow/contract.algo.ts:130
+    // amount: new Uint64(amounts[i].asUint64()),
+    dig 6
+    extract 2 0
+    uncover 2
+    intc_0 // 8
+    extract3 // on error: index access is out of bounds
+    // smart_contracts/escrow/contract.algo.ts:127-133
+    // this.ms(this.msKey(dealId, i)).value = new Milestone({
+    //   metric: new Uint8(metrics[i].asUint64()),
+    //   threshold: new Uint64(thresholds[i].asUint64()),
+    //   amount: new Uint64(amounts[i].asUint64()),
+    //   status: new Uint8(0),
+    //   approvedAt: new Uint64(0),
+    // })
+    cover 2
+    concat
+    swap
+    concat
+    pushbytes 0x000000000000000000
+    concat
+    // smart_contracts/escrow/contract.algo.ts:62
+    // return dealId * 256 + index
+    dig 10
+    intc 4 // 256
+    *
+    dig 2
+    +
+    // smart_contracts/escrow/contract.algo.ts:127
+    // this.ms(this.msKey(dealId, i)).value = new Milestone({
+    itob
+    // smart_contracts/escrow/contract.algo.ts:59
+    // ms = BoxMap<uint64, Milestone>({ keyPrefix: 'm' })
+    bytec_2 // "m"
+    swap
+    concat
+    // smart_contracts/escrow/contract.algo.ts:127-133
+    // this.ms(this.msKey(dealId, i)).value = new Milestone({
+    //   metric: new Uint8(metrics[i].asUint64()),
+    //   threshold: new Uint64(thresholds[i].asUint64()),
+    //   amount: new Uint64(amounts[i].asUint64()),
+    //   status: new Uint8(0),
+    //   approvedAt: new Uint64(0),
+    // })
+    swap
+    box_put
+    // smart_contracts/escrow/contract.algo.ts:126
+    // for (let i: uint64 = 0; i < count; i = i + 1) {
+    intc_2 // 1
+    +
+    bury 13
+    b createDeal_while_top@13
+
+createDeal_after_while@15:
+    // smart_contracts/escrow/contract.algo.ts:88-96
+    // createDeal(
+    //   axfer: gtxn.AssetTransferTxn,
+    //   boxPay: gtxn.PaymentTxn,
+    //   dealId: uint64,
+    //   deadline: uint64,
+    //   metrics: DynamicArray<Uint8>,
+    //   thresholds: DynamicArray<Uint64>,
+    //   amounts: DynamicArray<Uint64>,
+    // ): void {
+    intc_2 // 1
+    return
+
+createDeal_bool_false@8:
+    intc_1 // 0
+    b createDeal_bool_merge@9
+
+createDeal_bool_false@4:
+    intc_1 // 0
+    b createDeal_bool_merge@5
+
+
+// smart_contracts/escrow/contract.algo.ts::EscrowApp.acceptApplication[routing]() -> void:
+acceptApplication:
+    // smart_contracts/escrow/contract.algo.ts:138
+    // acceptApplication(dealId: uint64, creator: Account): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dup
+    len
+    pushint 32 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // smart_contracts/escrow/contract.algo.ts:139
+    // const d = clone(this.deals(dealId).value)
+    swap
+    itob
+    // smart_contracts/escrow/contract.algo.ts:58
+    // deals = BoxMap<uint64, DealHeader>({ keyPrefix: 'd' })
+    bytec_1 // "d"
+    swap
+    concat
+    // smart_contracts/escrow/contract.algo.ts:139
+    // const d = clone(this.deals(dealId).value)
+    dup
+    box_get
+    assert // Box must have value
+    // smart_contracts/escrow/contract.algo.ts:140
+    // assert(Txn.sender === d.brand.native, 'brand only')
+    txn Sender
+    dig 1
+    extract 0 32
+    swap
+    dig 1
+    ==
+    assert // brand only
+    // smart_contracts/escrow/contract.algo.ts:141
+    // assert(d.status.asUint64() === 0, 'deal must be FUNDED')
+    dig 1
+    pushint 80 // 80
+    getbyte
+    !
+    assert // deal must be FUNDED
+    // smart_contracts/escrow/contract.algo.ts:145
+    // total: d.total,
+    dig 1
+    extract 64 8
+    // smart_contracts/escrow/contract.algo.ts:146
+    // deadline: d.deadline,
+    dig 2
+    extract 72 8
+    // smart_contracts/escrow/contract.algo.ts:148
+    // count: d.count,
+    dig 3
+    extract 81 1
+    // smart_contracts/escrow/contract.algo.ts:149
+    // released: d.released,
+    uncover 4
+    extract 82 1
+    // smart_contracts/escrow/contract.algo.ts:142-150
+    // this.deals(dealId).value = new DealHeader({
+    //   brand: d.brand,
+    //   creator: new Address(creator),
+    //   total: d.total,
+    //   deadline: d.deadline,
+    //   status: new Uint8(1),
+    //   count: d.count,
+    //   released: d.released,
+    // })
+    uncover 4
+    uncover 6
+    concat
+    uncover 4
+    concat
+    uncover 3
+    concat
+    // smart_contracts/escrow/contract.algo.ts:147
+    // status: new Uint8(1),
+    pushbytes 0x01
+    // smart_contracts/escrow/contract.algo.ts:142-150
+    // this.deals(dealId).value = new DealHeader({
+    //   brand: d.brand,
+    //   creator: new Address(creator),
+    //   total: d.total,
+    //   deadline: d.deadline,
+    //   status: new Uint8(1),
+    //   count: d.count,
+    //   released: d.released,
+    // })
+    concat
+    uncover 2
+    concat
+    swap
+    concat
+    box_put
+    // smart_contracts/escrow/contract.algo.ts:138
+    // acceptApplication(dealId: uint64, creator: Account): void {
+    intc_2 // 1
+    return
+
+
+// smart_contracts/escrow/contract.algo.ts::EscrowApp.submitMilestoneVerdict[routing]() -> void:
+submitMilestoneVerdict:
+    intc_1 // 0
+    // smart_contracts/escrow/contract.algo.ts:154
+    // submitMilestoneVerdict(dealId: uint64, index: uint64, pass: boolean, confidence: uint64, observedValue: uint64): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 3
+    dup
+    len
+    intc_2 // 1
+    ==
+    assert // invalid number of bytes for arc4.bool
+    intc_1 // 0
+    getbit
+    txna ApplicationArgs 4
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    cover 3
+    txna ApplicationArgs 5
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    cover 3
+    // smart_contracts/escrow/contract.algo.ts:155
+    // assert(Txn.sender === this.agentOracle.value, 'oracle only')
+    txn Sender
+    intc_1 // 0
+    // smart_contracts/escrow/contract.algo.ts:53
+    // agentOracle = GlobalState<Account>()
+    bytec 5 // "agentOracle"
+    // smart_contracts/escrow/contract.algo.ts:155
+    // assert(Txn.sender === this.agentOracle.value, 'oracle only')
+    app_global_get_ex
+    assert // check GlobalState exists
+    ==
+    assert // oracle only
+    // smart_contracts/escrow/contract.algo.ts:62
+    // return dealId * 256 + index
+    uncover 2
+    intc 4 // 256
+    *
+    uncover 2
+    +
+    // smart_contracts/escrow/contract.algo.ts:157
+    // const m = clone(this.ms(k).value)
+    itob
+    // smart_contracts/escrow/contract.algo.ts:59
+    // ms = BoxMap<uint64, Milestone>({ keyPrefix: 'm' })
+    bytec_2 // "m"
+    swap
+    concat
+    dup
+    cover 2
+    // smart_contracts/escrow/contract.algo.ts:157
+    // const m = clone(this.ms(k).value)
+    box_get
+    swap
+    dup
+    cover 2
+    cover 3
+    assert // Box must have value
+    // smart_contracts/escrow/contract.algo.ts:158
+    // assert(m.status.asUint64() === 0, 'milestone not PENDING')
+    pushint 17 // 17
+    getbyte
+    !
+    assert // milestone not PENDING
+    // smart_contracts/escrow/contract.algo.ts:161
+    // if (pass && confidence >= this.minConfidence.value && observedValue >= m.threshold.asUint64()) {
+    bz submitMilestoneVerdict_after_if_else@5
+    intc_1 // 0
+    // smart_contracts/escrow/contract.algo.ts:56
+    // minConfidence = GlobalState<uint64>()
+    bytec 6 // "minConfidence"
+    // smart_contracts/escrow/contract.algo.ts:161
+    // if (pass && confidence >= this.minConfidence.value && observedValue >= m.threshold.asUint64()) {
+    app_global_get_ex
+    assert // check GlobalState exists
+    dig 4
+    <=
+    bz submitMilestoneVerdict_after_if_else@5
+    dupn 2
+    extract 1 8
+    bury 6
+    intc_2 // 1
+    extract_uint64
+    dig 3
+    <=
+    bz submitMilestoneVerdict_after_if_else@5
+    // smart_contracts/escrow/contract.algo.ts:163
+    // metric: m.metric,
+    dupn 2
+    extract 0 1
+    // smart_contracts/escrow/contract.algo.ts:165
+    // amount: m.amount,
+    swap
+    extract 9 8
+    // smart_contracts/escrow/contract.algo.ts:167
+    // approvedAt: new Uint64(Global.latestTimestamp),
+    global LatestTimestamp
+    itob
+    // smart_contracts/escrow/contract.algo.ts:162-168
+    // this.ms(k).value = new Milestone({
+    //   metric: m.metric,
+    //   threshold: m.threshold,
+    //   amount: m.amount,
+    //   status: new Uint8(1),
+    //   approvedAt: new Uint64(Global.latestTimestamp),
+    // })
+    uncover 2
+    dig 7
+    concat
+    uncover 2
+    concat
+    // smart_contracts/escrow/contract.algo.ts:166
+    // status: new Uint8(1),
+    pushbytes 0x01
+    // smart_contracts/escrow/contract.algo.ts:162-168
+    // this.ms(k).value = new Milestone({
+    //   metric: m.metric,
+    //   threshold: m.threshold,
+    //   amount: m.amount,
+    //   status: new Uint8(1),
+    //   approvedAt: new Uint64(Global.latestTimestamp),
+    // })
+    concat
+    swap
+    concat
+    dig 2
+    swap
+    box_put
+
+submitMilestoneVerdict_after_if_else@5:
+    // smart_contracts/escrow/contract.algo.ts:154
+    // submitMilestoneVerdict(dealId: uint64, index: uint64, pass: boolean, confidence: uint64, observedValue: uint64): void {
+    intc_2 // 1
+    return
+
+
+// smart_contracts/escrow/contract.algo.ts::EscrowApp.releaseMilestone[routing]() -> void:
+releaseMilestone:
+    // smart_contracts/escrow/contract.algo.ts:173
+    // releaseMilestone(dealId: uint64, index: uint64): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/escrow/contract.algo.ts:174
+    // const d = clone(this.deals(dealId).value)
+    dig 1
+    itob
+    // smart_contracts/escrow/contract.algo.ts:58
+    // deals = BoxMap<uint64, DealHeader>({ keyPrefix: 'd' })
+    bytec_1 // "d"
+    swap
+    concat
+    // smart_contracts/escrow/contract.algo.ts:174
+    // const d = clone(this.deals(dealId).value)
+    dup
+    box_get
+    assert // Box must have value
+    // smart_contracts/escrow/contract.algo.ts:62
+    // return dealId * 256 + index
+    uncover 3
+    intc 4 // 256
+    *
+    uncover 3
+    +
+    // smart_contracts/escrow/contract.algo.ts:176
+    // const m = clone(this.ms(k).value)
+    itob
+    // smart_contracts/escrow/contract.algo.ts:59
+    // ms = BoxMap<uint64, Milestone>({ keyPrefix: 'm' })
+    bytec_2 // "m"
+    swap
+    concat
+    // smart_contracts/escrow/contract.algo.ts:176
+    // const m = clone(this.ms(k).value)
+    dup
+    box_get
+    assert // Box must have value
+    // smart_contracts/escrow/contract.algo.ts:177
+    // assert(m.status.asUint64() === 1, 'milestone not REACHED_PENDING')
+    dup
+    pushint 17 // 17
+    getbyte
+    intc_2 // 1
+    ==
+    assert // milestone not REACHED_PENDING
+    // smart_contracts/escrow/contract.algo.ts:178
+    // assert(d.status.asUint64() !== 6, 'deal disputed')
+    dig 2
+    pushint 80 // 80
+    getbyte
+    pushint 6 // 6
+    !=
+    assert // deal disputed
+    // smart_contracts/escrow/contract.algo.ts:179
+    // assert(Global.latestTimestamp >= m.approvedAt.asUint64() + this.challengeWindow.value, 'timelock not elapsed')
+    global LatestTimestamp
+    dig 1
+    extract 18 8
+    dig 2
+    pushint 18 // 18
+    extract_uint64
+    intc_1 // 0
+    // smart_contracts/escrow/contract.algo.ts:55
+    // challengeWindow = GlobalState<uint64>()
+    bytec 4 // "challengeWindow"
+    // smart_contracts/escrow/contract.algo.ts:179
+    // assert(Global.latestTimestamp >= m.approvedAt.asUint64() + this.challengeWindow.value, 'timelock not elapsed')
+    app_global_get_ex
+    assert // check GlobalState exists
+    +
+    uncover 2
+    <=
+    assert // timelock not elapsed
+    // smart_contracts/escrow/contract.algo.ts:182-189
+    // itxn
+    //   .assetTransfer({
+    //     xferAsset: this.usdcAsa.value,
+    //     assetReceiver: d.creator.native,
+    //     assetAmount: m.amount.asUint64(),
+    //     fee: 0,
+    //   })
+    //   .submit()
+    itxn_begin
+    // smart_contracts/escrow/contract.algo.ts:184
+    // xferAsset: this.usdcAsa.value,
+    intc_1 // 0
+    // smart_contracts/escrow/contract.algo.ts:54
+    // usdcAsa = GlobalState<uint64>()
+    bytec_0 // "usdcAsa"
+    // smart_contracts/escrow/contract.algo.ts:184
+    // xferAsset: this.usdcAsa.value,
+    app_global_get_ex
+    assert // check GlobalState exists
+    // smart_contracts/escrow/contract.algo.ts:185
+    // assetReceiver: d.creator.native,
+    dig 4
+    extract 32 32
+    // smart_contracts/escrow/contract.algo.ts:186
+    // assetAmount: m.amount.asUint64(),
+    dig 3
+    extract 9 8
+    dig 4
+    pushint 9 // 9
+    extract_uint64
+    itxn_field AssetAmount
+    dig 1
+    itxn_field AssetReceiver
+    uncover 2
+    itxn_field XferAsset
+    // smart_contracts/escrow/contract.algo.ts:182-188
+    // itxn
+    //   .assetTransfer({
+    //     xferAsset: this.usdcAsa.value,
+    //     assetReceiver: d.creator.native,
+    //     assetAmount: m.amount.asUint64(),
+    //     fee: 0,
+    //   })
+    intc_3 // 4
+    itxn_field TypeEnum
+    // smart_contracts/escrow/contract.algo.ts:187
+    // fee: 0,
+    intc_1 // 0
+    itxn_field Fee
+    // smart_contracts/escrow/contract.algo.ts:182-189
+    // itxn
+    //   .assetTransfer({
+    //     xferAsset: this.usdcAsa.value,
+    //     assetReceiver: d.creator.native,
+    //     assetAmount: m.amount.asUint64(),
+    //     fee: 0,
+    //   })
+    //   .submit()
+    itxn_submit
+    // smart_contracts/escrow/contract.algo.ts:192
+    // metric: m.metric,
+    dig 3
+    extract 0 1
+    // smart_contracts/escrow/contract.algo.ts:193
+    // threshold: m.threshold,
+    uncover 4
+    extract 1 8
+    // smart_contracts/escrow/contract.algo.ts:191-197
+    // this.ms(k).value = new Milestone({
+    //   metric: m.metric,
+    //   threshold: m.threshold,
+    //   amount: m.amount,
+    //   status: new Uint8(2),
+    //   approvedAt: m.approvedAt,
+    // })
+    concat
+    swap
+    concat
+    // smart_contracts/escrow/contract.algo.ts:195
+    // status: new Uint8(2),
+    pushbytes 0x02
+    // smart_contracts/escrow/contract.algo.ts:191-197
+    // this.ms(k).value = new Milestone({
+    //   metric: m.metric,
+    //   threshold: m.threshold,
+    //   amount: m.amount,
+    //   status: new Uint8(2),
+    //   approvedAt: m.approvedAt,
+    // })
+    concat
+    uncover 2
+    concat
+    uncover 2
+    swap
+    box_put
+    // smart_contracts/escrow/contract.algo.ts:199
+    // const newReleased: uint64 = d.released.asUint64() + 1
+    dig 1
+    pushint 82 // 82
+    getbyte
+    intc_2 // 1
+    +
+    // smart_contracts/escrow/contract.algo.ts:200
+    // const newStatus: uint64 = newReleased === d.count.asUint64() ? 4 : 3
+    dig 2
+    extract 81 1
+    dig 3
+    pushint 81 // 81
+    getbyte
+    dig 2
+    ==
+    pushint 3 // 3
+    intc_3 // 4
+    uncover 2
+    select
+    // smart_contracts/escrow/contract.algo.ts:202
+    // brand: d.brand,
+    dig 4
+    extract 0 32
+    // smart_contracts/escrow/contract.algo.ts:204
+    // total: d.total,
+    dig 5
+    extract 64 8
+    // smart_contracts/escrow/contract.algo.ts:205
+    // deadline: d.deadline,
+    uncover 6
+    extract 72 8
+    // smart_contracts/escrow/contract.algo.ts:206
+    // status: new Uint8(newStatus),
+    uncover 3
+    itob
+    dup
+    bitlen
+    intc_0 // 8
+    <=
+    assert // overflow
+    extract 7 1
+    // smart_contracts/escrow/contract.algo.ts:208
+    // released: new Uint8(newReleased),
+    uncover 5
+    itob
+    dup
+    bitlen
+    intc_0 // 8
+    <=
+    assert // overflow
+    extract 7 1
+    // smart_contracts/escrow/contract.algo.ts:201-209
+    // this.deals(dealId).value = new DealHeader({
+    //   brand: d.brand,
+    //   creator: d.creator,
+    //   total: d.total,
+    //   deadline: d.deadline,
+    //   status: new Uint8(newStatus),
+    //   count: d.count,
+    //   released: new Uint8(newReleased),
+    // })
+    uncover 4
+    uncover 6
+    concat
+    uncover 4
+    concat
+    uncover 3
+    concat
+    uncover 2
+    concat
+    uncover 2
+    concat
+    swap
+    concat
+    box_put
+    // smart_contracts/escrow/contract.algo.ts:173
+    // releaseMilestone(dealId: uint64, index: uint64): void {
+    intc_2 // 1
+    return
+
+
+// smart_contracts/escrow/contract.algo.ts::EscrowApp.dispute[routing]() -> void:
+dispute:
+    // smart_contracts/escrow/contract.algo.ts:213
+    // dispute(dealId: uint64, index: uint64): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/escrow/contract.algo.ts:214
+    // const d = clone(this.deals(dealId).value)
+    dig 1
+    itob
+    // smart_contracts/escrow/contract.algo.ts:58
+    // deals = BoxMap<uint64, DealHeader>({ keyPrefix: 'd' })
+    bytec_1 // "d"
+    swap
+    concat
+    // smart_contracts/escrow/contract.algo.ts:214
+    // const d = clone(this.deals(dealId).value)
+    dup
+    box_get
+    assert // Box must have value
+    // smart_contracts/escrow/contract.algo.ts:215
+    // assert(Txn.sender === d.brand.native, 'brand only')
+    txn Sender
+    dig 1
+    extract 0 32
+    swap
+    dig 1
+    ==
+    assert // brand only
+    // smart_contracts/escrow/contract.algo.ts:62
+    // return dealId * 256 + index
+    uncover 4
+    intc 4 // 256
+    *
+    uncover 4
+    +
+    // smart_contracts/escrow/contract.algo.ts:217
+    // const m = clone(this.ms(k).value)
+    itob
+    // smart_contracts/escrow/contract.algo.ts:59
+    // ms = BoxMap<uint64, Milestone>({ keyPrefix: 'm' })
+    bytec_2 // "m"
+    swap
+    concat
+    // smart_contracts/escrow/contract.algo.ts:217
+    // const m = clone(this.ms(k).value)
+    dup
+    box_get
+    assert // Box must have value
+    // smart_contracts/escrow/contract.algo.ts:218
+    // assert(m.status.asUint64() === 1, 'milestone not REACHED_PENDING')
+    dup
+    pushint 17 // 17
+    getbyte
+    intc_2 // 1
+    ==
+    assert // milestone not REACHED_PENDING
+    // smart_contracts/escrow/contract.algo.ts:219
+    // assert(Global.latestTimestamp < m.approvedAt.asUint64() + this.challengeWindow.value, 'window passed')
+    global LatestTimestamp
+    dig 1
+    extract 18 8
+    dig 2
+    pushint 18 // 18
+    extract_uint64
+    intc_1 // 0
+    // smart_contracts/escrow/contract.algo.ts:55
+    // challengeWindow = GlobalState<uint64>()
+    bytec 4 // "challengeWindow"
+    // smart_contracts/escrow/contract.algo.ts:219
+    // assert(Global.latestTimestamp < m.approvedAt.asUint64() + this.challengeWindow.value, 'window passed')
+    app_global_get_ex
+    assert // check GlobalState exists
+    +
+    uncover 2
+    >
+    assert // window passed
+    // smart_contracts/escrow/contract.algo.ts:221
+    // metric: m.metric,
+    dig 1
+    extract 0 1
+    // smart_contracts/escrow/contract.algo.ts:222
+    // threshold: m.threshold,
+    dig 2
+    extract 1 8
+    // smart_contracts/escrow/contract.algo.ts:223
+    // amount: m.amount,
+    uncover 3
+    extract 9 8
+    // smart_contracts/escrow/contract.algo.ts:220-226
+    // this.ms(k).value = new Milestone({
+    //   metric: m.metric,
+    //   threshold: m.threshold,
+    //   amount: m.amount,
+    //   status: new Uint8(4),
+    //   approvedAt: m.approvedAt,
+    // })
+    cover 2
+    concat
+    swap
+    concat
+    // smart_contracts/escrow/contract.algo.ts:224
+    // status: new Uint8(4),
+    pushbytes 0x04
+    // smart_contracts/escrow/contract.algo.ts:220-226
+    // this.ms(k).value = new Milestone({
+    //   metric: m.metric,
+    //   threshold: m.threshold,
+    //   amount: m.amount,
+    //   status: new Uint8(4),
+    //   approvedAt: m.approvedAt,
+    // })
+    concat
+    swap
+    concat
+    box_put
+    // smart_contracts/escrow/contract.algo.ts:229
+    // creator: d.creator,
+    dig 1
+    extract 32 32
+    // smart_contracts/escrow/contract.algo.ts:230
+    // total: d.total,
+    dig 2
+    extract 64 8
+    // smart_contracts/escrow/contract.algo.ts:231
+    // deadline: d.deadline,
+    dig 3
+    extract 72 8
+    // smart_contracts/escrow/contract.algo.ts:233
+    // count: d.count,
+    dig 4
+    extract 81 1
+    // smart_contracts/escrow/contract.algo.ts:234
+    // released: d.released,
+    uncover 5
+    extract 82 1
+    // smart_contracts/escrow/contract.algo.ts:227-235
+    // this.deals(dealId).value = new DealHeader({
+    //   brand: d.brand,
+    //   creator: d.creator,
+    //   total: d.total,
+    //   deadline: d.deadline,
+    //   status: new Uint8(6),
+    //   count: d.count,
+    //   released: d.released,
+    // })
+    uncover 5
+    uncover 5
+    concat
+    uncover 4
+    concat
+    uncover 3
+    concat
+    // smart_contracts/escrow/contract.algo.ts:232
+    // status: new Uint8(6),
+    pushbytes 0x06
+    // smart_contracts/escrow/contract.algo.ts:227-235
+    // this.deals(dealId).value = new DealHeader({
+    //   brand: d.brand,
+    //   creator: d.creator,
+    //   total: d.total,
+    //   deadline: d.deadline,
+    //   status: new Uint8(6),
+    //   count: d.count,
+    //   released: d.released,
+    // })
+    concat
+    uncover 2
+    concat
+    swap
+    concat
+    box_put
+    // smart_contracts/escrow/contract.algo.ts:213
+    // dispute(dealId: uint64, index: uint64): void {
+    intc_2 // 1
+    return
+
+
+// smart_contracts/escrow/contract.algo.ts::EscrowApp.resolveDispute[routing]() -> void:
+resolveDispute:
+    intc_1 // 0
+    pushbytes ""
+    // smart_contracts/escrow/contract.algo.ts:239
+    // resolveDispute(dealId: uint64, index: uint64, payCreator: boolean): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 3
+    dup
+    len
+    intc_2 // 1
+    ==
+    assert // invalid number of bytes for arc4.bool
+    intc_1 // 0
+    getbit
+    dup
+    cover 3
+    cover 3
+    // smart_contracts/escrow/contract.algo.ts:240
+    // const d = clone(this.deals(dealId).value)
+    dig 1
+    itob
+    // smart_contracts/escrow/contract.algo.ts:58
+    // deals = BoxMap<uint64, DealHeader>({ keyPrefix: 'd' })
+    bytec_1 // "d"
+    swap
+    concat
+    dup
+    cover 4
+    // smart_contracts/escrow/contract.algo.ts:240
+    // const d = clone(this.deals(dealId).value)
+    box_get
+    swap
+    cover 4
+    assert // Box must have value
+    // smart_contracts/escrow/contract.algo.ts:241
+    // assert(Txn.sender === this.admin.value, 'admin only')
+    txn Sender
+    intc_1 // 0
+    // smart_contracts/escrow/contract.algo.ts:52
+    // admin = GlobalState<Account>()
+    bytec_3 // "admin"
+    // smart_contracts/escrow/contract.algo.ts:241
+    // assert(Txn.sender === this.admin.value, 'admin only')
+    app_global_get_ex
+    assert // check GlobalState exists
+    ==
+    assert // admin only
+    // smart_contracts/escrow/contract.algo.ts:62
+    // return dealId * 256 + index
+    swap
+    intc 4 // 256
+    *
+    +
+    // smart_contracts/escrow/contract.algo.ts:243
+    // const m = clone(this.ms(k).value)
+    itob
+    // smart_contracts/escrow/contract.algo.ts:59
+    // ms = BoxMap<uint64, Milestone>({ keyPrefix: 'm' })
+    bytec_2 // "m"
+    swap
+    concat
+    dup
+    cover 2
+    // smart_contracts/escrow/contract.algo.ts:243
+    // const m = clone(this.ms(k).value)
+    box_get
+    swap
+    dup
+    cover 2
+    cover 3
+    assert // Box must have value
+    // smart_contracts/escrow/contract.algo.ts:244
+    // assert(m.status.asUint64() === 4, 'milestone not DISPUTED')
+    pushint 17 // 17
+    getbyte
+    intc_3 // 4
+    ==
+    assert // milestone not DISPUTED
+    // smart_contracts/escrow/contract.algo.ts:246
+    // const recipient: Account = payCreator ? d.creator.native : d.brand.native
+    bz resolveDispute_ternary_false@3
+    dig 2
+    extract 32 32
+
+resolveDispute_ternary_merge@4:
+    // smart_contracts/escrow/contract.algo.ts:247-254
+    // itxn
+    //   .assetTransfer({
+    //     xferAsset: this.usdcAsa.value,
+    //     assetReceiver: recipient,
+    //     assetAmount: m.amount.asUint64(),
+    //     fee: 0,
+    //   })
+    //   .submit()
+    itxn_begin
+    // smart_contracts/escrow/contract.algo.ts:249
+    // xferAsset: this.usdcAsa.value,
+    intc_1 // 0
+    // smart_contracts/escrow/contract.algo.ts:54
+    // usdcAsa = GlobalState<uint64>()
+    bytec_0 // "usdcAsa"
+    // smart_contracts/escrow/contract.algo.ts:249
+    // xferAsset: this.usdcAsa.value,
+    app_global_get_ex
+    assert // check GlobalState exists
+    // smart_contracts/escrow/contract.algo.ts:251
+    // assetAmount: m.amount.asUint64(),
+    dig 2
+    dup
+    extract 9 8
+    bury 10
+    pushint 9 // 9
+    extract_uint64
+    itxn_field AssetAmount
+    itxn_field XferAsset
+    itxn_field AssetReceiver
+    // smart_contracts/escrow/contract.algo.ts:247-253
+    // itxn
+    //   .assetTransfer({
+    //     xferAsset: this.usdcAsa.value,
+    //     assetReceiver: recipient,
+    //     assetAmount: m.amount.asUint64(),
+    //     fee: 0,
+    //   })
+    intc_3 // 4
+    itxn_field TypeEnum
+    // smart_contracts/escrow/contract.algo.ts:252
+    // fee: 0,
+    intc_1 // 0
+    itxn_field Fee
+    // smart_contracts/escrow/contract.algo.ts:247-254
+    // itxn
+    //   .assetTransfer({
+    //     xferAsset: this.usdcAsa.value,
+    //     assetReceiver: recipient,
+    //     assetAmount: m.amount.asUint64(),
+    //     fee: 0,
+    //   })
+    //   .submit()
+    itxn_submit
+    // smart_contracts/escrow/contract.algo.ts:256
+    // const newMsStatus: uint64 = payCreator ? 2 : 3
+    pushints 3 2 // 3, 2
+    dig 6
+    dup
+    cover 3
+    select
+    bury 7
+    // smart_contracts/escrow/contract.algo.ts:257
+    // const newReleased: uint64 = payCreator ? d.released.asUint64() + 1 : d.released.asUint64()
+    bz resolveDispute_ternary_false@7
+    dig 2
+    pushint 82 // 82
+    getbyte
+    intc_2 // 1
+    +
+
+resolveDispute_ternary_merge@8:
+    // smart_contracts/escrow/contract.algo.ts:259
+    // metric: m.metric,
+    dig 1
+    dup
+    extract 0 1
+    // smart_contracts/escrow/contract.algo.ts:260
+    // threshold: m.threshold,
+    dig 1
+    extract 1 8
+    // smart_contracts/escrow/contract.algo.ts:262
+    // status: new Uint8(newMsStatus),
+    dig 9
+    itob
+    dup
+    bitlen
+    intc_0 // 8
+    <=
+    assert // overflow
+    extract 7 1
+    // smart_contracts/escrow/contract.algo.ts:263
+    // approvedAt: m.approvedAt,
+    uncover 3
+    extract 18 8
+    // smart_contracts/escrow/contract.algo.ts:258-264
+    // this.ms(k).value = new Milestone({
+    //   metric: m.metric,
+    //   threshold: m.threshold,
+    //   amount: m.amount,
+    //   status: new Uint8(newMsStatus),
+    //   approvedAt: m.approvedAt,
+    // })
+    uncover 3
+    uncover 3
+    concat
+    dig 10
+    concat
+    uncover 2
+    concat
+    swap
+    concat
+    dig 3
+    swap
+    box_put
+    // smart_contracts/escrow/contract.algo.ts:266
+    // brand: d.brand,
+    dig 3
+    dup
+    extract 0 32
+    // smart_contracts/escrow/contract.algo.ts:267
+    // creator: d.creator,
+    dig 1
+    extract 32 32
+    // smart_contracts/escrow/contract.algo.ts:268
+    // total: d.total,
+    dig 2
+    extract 64 8
+    // smart_contracts/escrow/contract.algo.ts:269
+    // deadline: d.deadline,
+    dig 3
+    extract 72 8
+    // smart_contracts/escrow/contract.algo.ts:271
+    // count: d.count,
+    uncover 4
+    extract 81 1
+    // smart_contracts/escrow/contract.algo.ts:272
+    // released: new Uint8(newReleased),
+    uncover 5
+    itob
+    dup
+    bitlen
+    intc_0 // 8
+    <=
+    assert // overflow
+    extract 7 1
+    // smart_contracts/escrow/contract.algo.ts:265-273
+    // this.deals(dealId).value = new DealHeader({
+    //   brand: d.brand,
+    //   creator: d.creator,
+    //   total: d.total,
+    //   deadline: d.deadline,
+    //   status: new Uint8(3),
+    //   count: d.count,
+    //   released: new Uint8(newReleased),
+    // })
+    uncover 5
+    uncover 5
+    concat
+    uncover 4
+    concat
+    uncover 3
+    concat
+    // smart_contracts/escrow/contract.algo.ts:270
+    // status: new Uint8(3),
+    pushbytes 0x03
+    // smart_contracts/escrow/contract.algo.ts:265-273
+    // this.deals(dealId).value = new DealHeader({
+    //   brand: d.brand,
+    //   creator: d.creator,
+    //   total: d.total,
+    //   deadline: d.deadline,
+    //   status: new Uint8(3),
+    //   count: d.count,
+    //   released: new Uint8(newReleased),
+    // })
+    concat
+    uncover 2
+    concat
+    swap
+    concat
+    dig 4
+    swap
+    box_put
+    // smart_contracts/escrow/contract.algo.ts:239
+    // resolveDispute(dealId: uint64, index: uint64, payCreator: boolean): void {
+    intc_2 // 1
+    return
+
+resolveDispute_ternary_false@7:
+    // smart_contracts/escrow/contract.algo.ts:257
+    // const newReleased: uint64 = payCreator ? d.released.asUint64() + 1 : d.released.asUint64()
+    dig 2
+    pushint 82 // 82
+    getbyte
+    b resolveDispute_ternary_merge@8
+
+resolveDispute_ternary_false@3:
+    // smart_contracts/escrow/contract.algo.ts:246
+    // const recipient: Account = payCreator ? d.creator.native : d.brand.native
+    dig 2
+    extract 0 32
+    b resolveDispute_ternary_merge@4
+
+
+// smart_contracts/escrow/contract.algo.ts::EscrowApp.refund[routing]() -> void:
+refund:
+    intc_1 // 0
+    dup
+    pushbytes ""
+    // smart_contracts/escrow/contract.algo.ts:277
+    // refund(dealId: uint64): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_0 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    dup
+    // smart_contracts/escrow/contract.algo.ts:278
+    // const d = clone(this.deals(dealId).value)
+    itob
+    // smart_contracts/escrow/contract.algo.ts:58
+    // deals = BoxMap<uint64, DealHeader>({ keyPrefix: 'd' })
+    bytec_1 // "d"
+    swap
+    concat
+    dup
+    // smart_contracts/escrow/contract.algo.ts:278
+    // const d = clone(this.deals(dealId).value)
+    box_get
+    swap
+    dup
+    uncover 2
+    assert // Box must have value
+    // smart_contracts/escrow/contract.algo.ts:279
+    // assert(Txn.sender === d.brand.native, 'brand only')
+    txn Sender
+    dig 1
+    extract 0 32
+    dup
+    cover 3
+    ==
+    assert // brand only
+    // smart_contracts/escrow/contract.algo.ts:280
+    // assert(Global.latestTimestamp >= d.deadline.asUint64(), 'before deadline')
+    global LatestTimestamp
+    dig 1
+    extract 72 8
+    cover 2
+    dig 1
+    pushint 72 // 72
+    extract_uint64
+    >=
+    assert // before deadline
+    // smart_contracts/escrow/contract.algo.ts:282
+    // const count = d.count.asUint64()
+    dup
+    extract 81 1
+    swap
+    pushint 81 // 81
+    getbyte
+    // smart_contracts/escrow/contract.algo.ts:283
+    // let refundTotal: uint64 = 0
+    intc_1 // 0
+    // smart_contracts/escrow/contract.algo.ts:284
+    // for (let i: uint64 = 0; i < count; i = i + 1) {
+    dup
+
+refund_while_top@2:
+    // smart_contracts/escrow/contract.algo.ts:284
+    // for (let i: uint64 = 0; i < count; i = i + 1) {
+    dup
+    dig 3
+    <
+    bz refund_after_while@7
+    // smart_contracts/escrow/contract.algo.ts:62
+    // return dealId * 256 + index
+    dig 8
+    intc 4 // 256
+    *
+    dig 1
+    +
+    // smart_contracts/escrow/contract.algo.ts:286
+    // const m = clone(this.ms(k).value)
+    itob
+    // smart_contracts/escrow/contract.algo.ts:59
+    // ms = BoxMap<uint64, Milestone>({ keyPrefix: 'm' })
+    bytec_2 // "m"
+    swap
+    concat
+    dup
+    bury 13
+    // smart_contracts/escrow/contract.algo.ts:286
+    // const m = clone(this.ms(k).value)
+    box_get
+    swap
+    dup
+    cover 2
+    bury 13
+    assert // Box must have value
+    // smart_contracts/escrow/contract.algo.ts:287
+    // const st = m.status.asUint64()
+    pushint 17 // 17
+    getbyte
+    dup
+    bury 11
+    // smart_contracts/escrow/contract.algo.ts:288
+    // if (st !== 2 && st !== 3) {
+    pushint 2 // 2
+    !=
+    bz refund_after_if_else@6
+    dig 9
+    pushint 3 // 3
+    !=
+    bz refund_after_if_else@6
+    // smart_contracts/escrow/contract.algo.ts:290
+    // refundTotal = refundTotal + m.amount.asUint64()
+    dig 10
+    dup
+    extract 9 8
+    dig 1
+    pushint 9 // 9
+    extract_uint64
+    dig 4
+    +
+    bury 4
+    // smart_contracts/escrow/contract.algo.ts:292
+    // metric: m.metric,
+    dig 1
+    extract 0 1
+    // smart_contracts/escrow/contract.algo.ts:293
+    // threshold: m.threshold,
+    dig 2
+    extract 1 8
+    // smart_contracts/escrow/contract.algo.ts:296
+    // approvedAt: m.approvedAt,
+    uncover 3
+    extract 18 8
+    // smart_contracts/escrow/contract.algo.ts:291-297
+    // this.ms(k).value = new Milestone({
+    //   metric: m.metric,
+    //   threshold: m.threshold,
+    //   amount: m.amount,
+    //   status: new Uint8(3),
+    //   approvedAt: m.approvedAt,
+    // })
+    cover 2
+    concat
+    uncover 2
+    concat
+    // smart_contracts/escrow/contract.algo.ts:295
+    // status: new Uint8(3),
+    pushbytes 0x03
+    // smart_contracts/escrow/contract.algo.ts:291-297
+    // this.ms(k).value = new Milestone({
+    //   metric: m.metric,
+    //   threshold: m.threshold,
+    //   amount: m.amount,
+    //   status: new Uint8(3),
+    //   approvedAt: m.approvedAt,
+    // })
+    concat
+    swap
+    concat
+    dig 12
+    swap
+    box_put
+
+refund_after_if_else@6:
+    // smart_contracts/escrow/contract.algo.ts:284
+    // for (let i: uint64 = 0; i < count; i = i + 1) {
+    dup
+    intc_2 // 1
+    +
+    bury 1
+    b refund_while_top@2
+
+refund_after_while@7:
+    // smart_contracts/escrow/contract.algo.ts:300
+    // if (refundTotal > 0) {
+    dig 1
+    bz refund_after_if_else@10
+    // smart_contracts/escrow/contract.algo.ts:301-308
+    // itxn
+    //   .assetTransfer({
+    //     xferAsset: this.usdcAsa.value,
+    //     assetReceiver: d.brand.native,
+    //     assetAmount: refundTotal,
+    //     fee: 0,
+    //   })
+    //   .submit()
+    itxn_begin
+    // smart_contracts/escrow/contract.algo.ts:303
+    // xferAsset: this.usdcAsa.value,
+    intc_1 // 0
+    // smart_contracts/escrow/contract.algo.ts:54
+    // usdcAsa = GlobalState<uint64>()
+    bytec_0 // "usdcAsa"
+    // smart_contracts/escrow/contract.algo.ts:303
+    // xferAsset: this.usdcAsa.value,
+    app_global_get_ex
+    assert // check GlobalState exists
+    dig 2
+    itxn_field AssetAmount
+    dig 6
+    itxn_field AssetReceiver
+    itxn_field XferAsset
+    // smart_contracts/escrow/contract.algo.ts:301-307
+    // itxn
+    //   .assetTransfer({
+    //     xferAsset: this.usdcAsa.value,
+    //     assetReceiver: d.brand.native,
+    //     assetAmount: refundTotal,
+    //     fee: 0,
+    //   })
+    intc_3 // 4
+    itxn_field TypeEnum
+    // smart_contracts/escrow/contract.algo.ts:306
+    // fee: 0,
+    intc_1 // 0
+    itxn_field Fee
+    // smart_contracts/escrow/contract.algo.ts:301-308
+    // itxn
+    //   .assetTransfer({
+    //     xferAsset: this.usdcAsa.value,
+    //     assetReceiver: d.brand.native,
+    //     assetAmount: refundTotal,
+    //     fee: 0,
+    //   })
+    //   .submit()
+    itxn_submit
+
+refund_after_if_else@10:
+    // smart_contracts/escrow/contract.algo.ts:312
+    // creator: d.creator,
+    dig 6
+    dup
+    extract 32 32
+    // smart_contracts/escrow/contract.algo.ts:313
+    // total: d.total,
+    dig 1
+    extract 64 8
+    // smart_contracts/escrow/contract.algo.ts:317
+    // released: d.released,
+    uncover 2
+    extract 82 1
+    // smart_contracts/escrow/contract.algo.ts:310-318
+    // this.deals(dealId).value = new DealHeader({
+    //   brand: d.brand,
+    //   creator: d.creator,
+    //   total: d.total,
+    //   deadline: d.deadline,
+    //   status: new Uint8(5),
+    //   count: d.count,
+    //   released: d.released,
+    // })
+    dig 8
+    uncover 3
+    concat
+    uncover 2
+    concat
+    dig 6
+    concat
+    // smart_contracts/escrow/contract.algo.ts:315
+    // status: new Uint8(5),
+    pushbytes 0x05
+    // smart_contracts/escrow/contract.algo.ts:310-318
+    // this.deals(dealId).value = new DealHeader({
+    //   brand: d.brand,
+    //   creator: d.creator,
+    //   total: d.total,
+    //   deadline: d.deadline,
+    //   status: new Uint8(5),
+    //   count: d.count,
+    //   released: d.released,
+    // })
+    concat
+    dig 5
+    concat
+    swap
+    concat
+    dig 8
+    swap
+    box_put
+    // smart_contracts/escrow/contract.algo.ts:277
+    // refund(dealId: uint64): void {
+    intc_2 // 1
+    return

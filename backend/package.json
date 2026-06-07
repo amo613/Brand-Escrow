@@ -1,0 +1,29 @@
+{
+  "name": "pactpay-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "oracle": "tsx src/oracle.ts",
+    "e2e": "tsx scripts/backend-e2e.ts"
+  },
+  "dependencies": {
+    "@algorandfoundation/algokit-utils": "9.2.0",
+    "@hono/node-server": "^1.14.1",
+    "@x402/avm": "^2.12.0",
+    "@x402/core": "^2.12.0",
+    "@x402/fetch": "^2.12.0",
+    "@x402/hono": "^2.12.0",
+    "algosdk": "^3.2.0",
+    "dotenv": "^16.4.5",
+    "hono": "^4.7.9",
+    "ioredis": "^5.4.1",
+    "jose": "^5.9.6",
+    "tsx": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5"
+  }
+}

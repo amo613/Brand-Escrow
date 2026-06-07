@@ -45,11 +45,12 @@ Phase 2: Quest mode + x402-funded escrow. Phase 3: mainnet (the 50% milestone mo
 
 > `EscrowApp` (Algorand TypeScript) is the heart: it **holds the USDC** and is the **only** thing that can move it — within hard rules. Worked example: **Nike** pays **@maxfit** for a Reel — *5,000 likes → 2 USDC, 10,000 likes → 3 USDC* (total 5 USDC).
 
-**Algorand basics that make this safe:** the app has its **own account** that holds the escrow; it pays out only via **inner transactions** whose recipient/amount are set in code (never by the caller); funding is proven via an **atomic group** (the contract reads the sibling payment); each deal's state lives in a **box** keyed by `dealId`.
+**Algorand basics that make this safe:** the app has its **own account** that holds the escrow; it pays out only via **inner transactions** whose recipient/amount are set in code (never by the caller); funding is proven via an **atomic group** (the contract reads its sibling transactions); each deal's state lives in a **box** keyed by `dealId`, whose ~0.13 ALGO rent is paid in the same group.
 
-**1 · `create_deal` — brand funds (atomic group).** Brand signs `[ axfer Nike→App 5 USDC ] + [ create_deal(1, deadline, metrics=[LIKES,LIKES], thresholds=[5000,10000], amounts=[2,3]) ]`. The contract proves the funding:
+**1 · `create_deal` — brand funds (atomic group).** Brand signs `[ axfer Nike→App 5 USDC ] + [ pay Nike→App ~0.13 ALGO (box rent) ] + [ create_deal(1, deadline, metrics=[LIKES,LIKES], thresholds=[5000,10000], amounts=[2,3]) ]`. The contract proves the funding:
 ```
 assert axfer.receiver == app && axfer.amount == 5 USDC && axfer.asset == usdc
+assert pay.receiver   == app && pay.amount >= box_mbr        // funds the deal's box rent
 → Box[1] = { brand:Nike, creator:ZERO, total:5, status:FUNDED,
              milestones:[{LIKES,5000,2,PENDING},{LIKES,10000,3,PENDING}] }
 ```

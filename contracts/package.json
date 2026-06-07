@@ -1,0 +1,21 @@
+{
+  "name": "pactpay-contracts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "puya-ts build smart_contracts/escrow/contract.algo.ts --out-dir artifacts",
+    "deploy": "tsx scripts/deploy.ts"
+  },
+  "devDependencies": {
+    "@algorandfoundation/puya-ts": "latest",
+    "tsx": "^4",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@algorandfoundation/algokit-client-generator": "^6.0.1",
+    "@algorandfoundation/algokit-utils": "^9.2.0",
+    "@algorandfoundation/algorand-typescript": "latest",
+    "algosdk": "^3",
+    "dotenv": "^17.4.2"
+  }
+}
