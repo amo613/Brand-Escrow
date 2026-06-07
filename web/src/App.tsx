@@ -32,8 +32,8 @@ export default function App() {
       const { message } = await api.challenge(w.address)
       await api.verify(w.address, signChallenge(w, message))
       setPhase('airdrop'); setDrops({ algo: false, optin: false, usdc: false })
-      const a1 = await api.airdrop(); setDrops((d) => ({ ...d, algo: true }))
-      if (a1.needsOptIn) { await optInUSDC(w); setDrops((d) => ({ ...d, optin: true })); await api.airdrop(); setDrops((d) => ({ ...d, usdc: true })) }
+      const a1 = await api.airdrop(r); setDrops((d) => ({ ...d, algo: true }))
+      if (a1.needsOptIn) { await optInUSDC(w); setDrops((d) => ({ ...d, optin: true })); await api.airdrop(r); setDrops((d) => ({ ...d, usdc: true })) }
       else setDrops({ algo: true, optin: true, usdc: true })
       setBal(await getBalances(w.address)); setScreen({ name: r === 'brand' ? 'studio' : 'browse' })
       setTimeout(() => setPhase('app'), 600)

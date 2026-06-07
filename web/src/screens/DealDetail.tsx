@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 import { api, LORA } from '../lib/api.ts'
+import { acceptOnChain } from '../lib/escrow.ts'
+import { verifySocial } from '../lib/social.ts'
 import { Card, Button, Pill, TxLink } from '../components/ui.tsx'
 import type { Wallet } from '../lib/web3auth.ts'
+
+const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
+const PLAT_LABEL: Record<string, string> = { x: 'X', youtube: 'YouTube', tiktok: 'TikTok' }
 
 const fmt = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n))
 const statusColor: Record<string, string> = { PENDING: 'muted', REACHED_PENDING: 'amber', RELEASED: 'mint', REFUNDED: 'muted', FUNDED: 'chain', ACCEPTED: 'txt2', TRACKING: 'amber', PARTIALLY_RELEASED: 'mint', DISPUTED: 'coral' }
@@ -9,15 +14,27 @@ const statusColor: Record<string, string> = { PENDING: 'muted', REACHED_PENDING:
 export function DealDetail({ id, wallet, role, onBalances }: { id: string; wallet: Wallet; role: 'brand' | 'creator'; onBalances: () => void }) {
   const [d, setD] = useState<any>(null)
   const [postUrl, setPostUrl] = useState('')
+  const [handle, setHandle] = useState('')
+  const [socials, setSocials] = useState<any[]>([])
   const [busy, setBusy] = useState('')
   const load = () => api.deal(id).then(setD).catch(() => {})
   useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t) }, [id])
+  useEffect(() => { api.socials().then(setSocials).catch(() => {}) }, [])
   if (!d) return <div className="p-16 text-center text-txt2">Loading deal…</div>
 
+  const verified = socials.find((s: any) => s.platform === d.platform)
   const run = async (fn: () => Promise<any>, tag: string) => { setBusy(tag); try { await fn() } catch (e: any) { alert(e?.message ?? e) } await load(); setBusy('') }
   const submit = () => run(() => api.submit(id, postUrl), 'submit')
   const runAgent = (i: number) => run(() => api.runAgent(id, i), 'agent')
   const release = (i: number) => run(async () => { await api.release(id, i); onBalances() }, 'release')
+  const applyToDeal = () => run(() => api.apply(id, (verified?.handle ?? handle).trim()), 'apply')
+  const accept = (addr: string) => run(async () => { const tx = await acceptOnChain(wallet, id, addr); await api.accept(id, addr, tx) }, 'accept-' + addr)
+  const verify = (platform: string) => run(async () => { const r = await verifySocial(platform as any); if (!r.ok) throw new Error(r.error || 'verification failed'); setSocials(await api.socials()) }, 'verify')
+
+  const isBrand = wallet.address === d.brand
+  const isBoundCreator = d.creator === wallet.address
+  const applied = (d.applicants ?? []).some((a: any) => a.address === wallet.address)
+  const canApply = role === 'creator' && !isBrand && !d.creator && !applied
 
   return (
     <div className="max-w-[1280px] mx-auto px-5 py-7 grid lg:grid-cols-[1.4fr_1fr] gap-5 items-start">
@@ -30,8 +47,50 @@ export function DealDetail({ id, wallet, role, onBalances }: { id: string; walle
             <span>brand {d.brand.slice(0, 6)}…</span>{d.creator && <span>→ creator {d.creator.slice(0, 6)}…</span>}
             {d.tx.fund && <TxLink tx={d.tx.fund} label="funded" lora={LORA} />}
           </div>
-          {/* creator submits the post link */}
-          {(!d.postUrl) && (role === 'creator' || d.creator === wallet.address) && (
+          {/* ── creator verifies @handle (OAuth) then applies ── */}
+          {canApply && (
+            <div className="mt-4 p-3 rounded-ctl hair bg-white/[0.02]">
+              {verified ? (
+                <>
+                  <div className="text-[12.5px] text-txt mb-2.5">Verified as <span className="num text-mint">{verified.handle}</span> on {PLAT_LABEL[d.platform] ?? d.platform} ✓</div>
+                  <Button onClick={applyToDeal} disabled={busy === 'apply'}>{busy === 'apply' ? '…' : 'Apply to deliver this deal'}</Button>
+                </>
+              ) : (
+                <>
+                  <div className="text-[12.5px] text-txt">Verify your {PLAT_LABEL[d.platform] ?? d.platform} account to apply</div>
+                  <div className="text-[11.5px] text-txt2 mt-0.5 mb-2.5">Proves the @handle of the post we'll track — OAuth, we never see your password.</div>
+                  <Button variant="agent" onClick={() => verify(d.platform)} disabled={busy === 'verify'}>{busy === 'verify' ? 'Opening…' : `🔗 Verify @handle on ${PLAT_LABEL[d.platform] ?? d.platform}`}</Button>
+                  <div className="flex gap-2 mt-2.5">
+                    <input value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="or apply with @handle manually" className="flex-1 px-3 py-2 rounded-ctl hair bg-ink/60 text-[12px] text-txt num" />
+                    <Button variant="ghost" onClick={applyToDeal} disabled={busy === 'apply' || !handle.trim()}>{busy === 'apply' ? '…' : 'Apply'}</Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          {role === 'creator' && !isBrand && applied && !isBoundCreator && <div className="mt-4 text-[12.5px] text-amber">✓ Applied — waiting for the brand to accept you.</div>}
+          {role === 'creator' && !isBrand && d.creator && !isBoundCreator && <div className="mt-4 text-[12.5px] text-txt2">This deal already has a bound creator.</div>}
+
+          {/* ── brand reviews applicants + accepts (binds creator on-chain) ── */}
+          {isBrand && !d.creator && (
+            <div className="mt-4 p-3 rounded-ctl hair bg-white/[0.02]">
+              <div className="text-[12.5px] text-txt mb-2">Applicants {(d.applicants ?? []).length > 0 && `(${d.applicants.length})`}</div>
+              {(d.applicants ?? []).length === 0 ? <div className="text-[12px] text-muted">No applicants yet — a creator needs to apply.</div> : (
+                <div className="flex flex-col gap-2">
+                  {d.applicants.map((a: any) => (
+                    <div key={a.address} className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0"><div className="text-[12.5px] text-txt">{a.handle || 'creator'}</div><div className="num text-[11px] text-txt2 truncate">{short(a.address)}</div></div>
+                      <Button onClick={() => accept(a.address)} disabled={busy.startsWith('accept')}>{busy === 'accept-' + a.address ? 'Binding…' : 'Accept'}</Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {d.creator && <div className="num text-[11.5px] text-mint mt-3">✓ creator bound: {short(d.creator)}{d.tx.accept && <> · <TxLink tx={d.tx.accept} label="accept" lora={LORA} /></>}</div>}
+
+          {/* ── bound creator submits the post link ── */}
+          {isBoundCreator && !d.postUrl && (
             <div className="flex gap-2 mt-4"><input value={postUrl} onChange={(e) => setPostUrl(e.target.value)} placeholder="Paste your post link…" className="flex-1 px-3 py-2 rounded-ctl hair bg-ink/60 text-[12.5px] text-txt num" /><Button onClick={submit} disabled={busy === 'submit' || !postUrl}>{busy === 'submit' ? '…' : 'Submit'}</Button></div>
           )}
           {d.postUrl && <div className="num text-[11.5px] text-chain mt-3 truncate">↳ post: {d.postUrl}</div>}

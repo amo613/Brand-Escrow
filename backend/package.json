@@ -6,11 +6,15 @@
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "oracle": "tsx src/oracle.ts",
-    "e2e": "tsx scripts/backend-e2e.ts"
+    "e2e": "tsx scripts/backend-e2e.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@algorandfoundation/algokit-utils": "9.2.0",
     "@hono/node-server": "^1.14.1",
+    "@neondatabase/serverless": "^1.1.0",
+    "@prisma/adapter-neon": "^6.19.3",
+    "@prisma/client": "^6.19.3",
     "@x402/avm": "^2.12.0",
     "@x402/core": "^2.12.0",
     "@x402/fetch": "^2.12.0",
@@ -20,10 +24,13 @@
     "hono": "^4.7.9",
     "ioredis": "^5.4.1",
     "jose": "^5.9.6",
-    "tsx": "^4"
+    "tsx": "^4",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/node": "^22",
+    "@types/ws": "^8.18.1",
+    "prisma": "^6.19.3",
     "typescript": "^5"
   }
 }

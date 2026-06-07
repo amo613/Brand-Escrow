@@ -2,8 +2,9 @@
 FROM node:22-slim
 WORKDIR /app
 
-# deps first for layer caching
+# deps first for layer caching; prisma schema must exist before npm ci (postinstall = prisma generate)
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
 RUN npm ci
 
 # app source (src/ incl. vendored generated/EscrowClient.ts; .env is .dockerignore'd)

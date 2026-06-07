@@ -24,16 +24,35 @@ const chainConfig = {
 }
 
 let web3auth: Web3Auth | null = null
+let crashSuppressed = false
+
+function buildWeb3Auth(includeStoredSession = true): Web3Auth {
+  const privateKeyProvider = new CommonPrivateKeyProvider({ config: { chain: chainConfig, chains: [chainConfig] } })
+  let storedState: Record<string, unknown> = {}
+  if (includeStoredSession) {
+    try { const raw = localStorage.getItem('Web3Auth-state'); if (raw) storedState = JSON.parse(raw) as Record<string, unknown> } catch { /* ignore */ }
+  }
+  return new Web3Auth(
+    { clientId: CLIENT_ID, web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_DEVNET, privateKeyProvider, chains: [chainConfig] } as any,
+    // Force Algorand as the ACTIVE chain so the live provider is the CommonPrivateKeyProvider
+    // (which supports `private_key`). Without this, if the Web3Auth project config adds EVM
+    // chains, chains[0] becomes EIP155 → an EVM provider → provider.request({method:'private_key'})
+    // throws "Method not supported". External wallets stay fully available in the modal.
+    { cachedConnector: null, connectedConnectorName: null, idToken: null, ...storedState, currentChainId: 'algorand:testnet' } as any,
+  )
+}
+
 export async function initWeb3Auth() {
   if (web3auth) return web3auth
-  const privateKeyProvider = new CommonPrivateKeyProvider({ config: { chain: chainConfig, chains: [chainConfig] } })
-  web3auth = new Web3Auth({
-    clientId: CLIENT_ID,
-    web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_DEVNET,
-    privateKeyProvider,
-    chains: [chainConfig],
-  } as any)
-  await web3auth.init()
+  if (!crashSuppressed) {
+    // non-EVM session restore can reject async with "loginWithSessionId" after init() resolves
+    window.addEventListener('unhandledrejection', (e) => {
+      if (String((e.reason as Error)?.message ?? '').includes('loginWithSessionId')) e.preventDefault()
+    })
+    crashSuppressed = true
+  }
+  web3auth = buildWeb3Auth(true)
+  await web3auth.init().catch(() => {})
   return web3auth
 }
 

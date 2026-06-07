@@ -20,7 +20,34 @@ export interface Proof {
   mediaType: string
   profileImage: string
   source: string
+  real: boolean
   fetchedAt: number
+}
+
+// X (Twitter) API v2 — bearer is stored URL-encoded in some portals, so decode it.
+const X_BEARER = process.env.X_BEARER_TOKEN ? decodeURIComponent(process.env.X_BEARER_TOKEN) : ''
+const tweetIdFromUrl = (url: string): string | null => url.match(/(?:twitter\.com|x\.com)\/[^/]+\/status\/(\d+)/i)?.[1] ?? null
+
+/** Real metric read from the X API. Returns null on profile-only URLs, missing creds, or API errors
+ *  (e.g. free tier can't read tweets) so callers fall back to the override/deterministic value. */
+async function fetchXMetric(postUrl: string, metric: string): Promise<{ value: number; handle?: string; content?: string; profileImage?: string } | null> {
+  const id = tweetIdFromUrl(postUrl)
+  if (!id || !X_BEARER) return null
+  try {
+    const url = `https://api.twitter.com/2/tweets/${id}?tweet.fields=public_metrics,text&expansions=author_id&user.fields=username,profile_image_url`
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${X_BEARER}` } })
+    if (!r.ok) return null
+    const j: any = await r.json()
+    const pm = j.data?.public_metrics ?? {}
+    const map: Record<string, number> = {
+      likes: pm.like_count, views: pm.impression_count ?? 0,
+      comments: pm.reply_count, shares: (pm.retweet_count ?? 0) + (pm.quote_count ?? 0),
+    }
+    const value = map[metric]
+    if (value == null) return null
+    const user = j.includes?.users?.[0]
+    return { value, handle: user?.username ? '@' + user.username : undefined, content: j.data?.text, profileImage: user?.profile_image_url?.replace('_normal', '') }
+  } catch { return null }
 }
 
 const overrides = new Map<string, number>() // key `${postUrl}|${metric}` -> value
@@ -56,19 +83,24 @@ export function profileImageUrl(platform: string, handle: string): string {
 }
 
 export async function fetchProof(platform: string, postUrl: string, metric: string): Promise<Proof> {
-  const authorHandle = deriveHandle(postUrl, platform)
-  const metricValue = overrides.get(`${postUrl}|${metric}`) ?? deterministicMetric(postUrl, metric)
+  const override = overrides.get(`${postUrl}|${metric}`)
+  // 1) admin override wins (Test Console). 2) real X API. 3) deterministic demo fixture.
+  const live = override == null && (platform === 'x' || platform === 'twitter') ? await fetchXMetric(postUrl, metric) : null
+  const real = live != null
+  const authorHandle = live?.handle ?? deriveHandle(postUrl, platform)
+  const metricValue = override ?? live?.value ?? deterministicMetric(postUrl, metric)
   return {
     authorHandle,
     platform,
     metric,
     metricValue,
-    content: `Training in the new gear 🔥 link in bio #PactPay @nike — ${authorHandle}`,
+    content: live?.content ?? `Training in the new gear 🔥 link in bio #PactPay @nike — ${authorHandle}`,
     hashtags: ['#PactPay'],
     mentions: ['@nike'],
     mediaType: 'video',
-    profileImage: profileImageUrl(platform, authorHandle),
-    source: `via ${platform === 'tiktok' ? 'Apify (clockworks~tiktok-scraper)' : platform.toUpperCase() + ' API'}`,
+    profileImage: live?.profileImage ?? profileImageUrl(platform, authorHandle),
+    source: real ? 'live · X API v2' : override != null ? 'admin override (test)' : `demo fixture (${platform})`,
+    real,
     fetchedAt: Date.now(),
   }
 }
