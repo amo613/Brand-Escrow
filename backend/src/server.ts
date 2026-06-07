@@ -24,6 +24,7 @@ import { redisPing } from './lib/store.ts'
 import * as repo from './lib/repo.ts'
 import { dbPing } from './lib/db.ts'
 import { socialRoutes } from './lib/socialOAuth.ts'
+import { startWorkers } from './jobs.ts'
 
 const lastTx = (r: any): string | undefined => r?.txIds?.[r.txIds.length - 1]
 const CHALLENGE_WINDOW_SECS = Number(process.env.CHALLENGE_WINDOW_SECS ?? '15') // matches the deployed contract
@@ -187,4 +188,7 @@ app.post('/api/admin/metric-override', requireAuth, async (c) => {
 const port = Number(process.env.PORT ?? process.env.API_PORT ?? 8080)
 serve({ fetch: app.fetch, port, hostname: '0.0.0.0' })
 console.log(`[api] PactPay backend on :${port} — escrowApp ${ENV.ESCROW_APP_ID}, tUSDC ${ENV.USDC_ASA}`)
+
+// autonomous loop: track metrics → run agent at threshold → auto-release after the window
+startWorkers(`http://localhost:${port}`)
 export { app, port }
